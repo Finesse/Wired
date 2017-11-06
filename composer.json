@@ -1,0 +1,39 @@
+{
+	"name": "finesse/wired",
+	"description": "Light independent ORM with no external configuration",
+	"keywords": ["orm", "sql", "query builder", "database", "mysql", "sqlite", "pdo"],
+	"type": "library",
+	"homepage": "https://github.com/FinesseRus/Wired",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Surgie Finesse",
+			"email": "finesserus@gmail.com"
+		}
+	],
+	"require": {
+		"php": ">=7.0",
+		"finesse/mini-db": "dev-master"
+	},
+	"require-dev": {
+		"ext-pdo_sqlite": "*",
+		"phpunit/phpunit": "^6.4",
+		"pagerfanta/pagerfanta": "^1.0"
+	},
+	"suggest": {
+		"pagerfanta/pagerfanta": "To make pagination"
+	},
+	"autoload": {
+		"psr-4": {
+			"Finesse\\Wired\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Finesse\\Wired\\Tests\\": "tests/"
+		}
+	},
+	"scripts": {
+		"test": "vendor/bin/phpunit"
+	}
+}
