@@ -99,7 +99,7 @@ class ModelQuery extends QueryProxy
             throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
         }
 
-        parent::handleBaseQueryException($exception);
+        return parent::handleBaseQueryException($exception);
     }
 
     /**
