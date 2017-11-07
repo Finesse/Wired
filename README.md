@@ -75,8 +75,8 @@ $database = Database::create([/* config, see example above */]);
 $orm = new Mapper($database);
 ```
 
-You can get more information about making a `Database` instance 
-[there](https://github.com/FinesseRus/MiniDB#getting-started);
+You can get more information about creating a `Database` instance 
+[there](https://github.com/FinesseRus/MiniDB#getting-started).
 
 ### Models
 
@@ -93,7 +93,7 @@ class User extends Model
     public $email;
     public $rank;
 
-    // Returns the database table name where users are stored
+    // Returns the database table name where users are stored (not prefixed)
     public static function getTable(): string
     {
         return 'users';
@@ -105,13 +105,13 @@ class User extends Model
 
 ### Retrieve models
 
-Get a model by id:
+Get a model by identifier:
 
 ```php
 $user = $orm->model(User::class)->find(15); // A User instance of null
 ```
 
-Get an array of models by ids:
+Get an array of models by identifiers:
 
 ```php
 $users = $orm->model(User::class)->find([5, 27, 183]); // [User, User, User]
@@ -123,7 +123,7 @@ Get all models:
 $users = $orm->model(User::class)->get();
 ```
 
-Get models with clause:
+Get models with a clause:
 
 ```php
 $importantUsers = $orm
@@ -137,6 +137,43 @@ $importantUsers = $orm
 
 You can find more cool examples of using the query builder 
 [there](https://github.com/FinesseRus/QueryScribe#building-queries).
+
+#### Pagination
+
+We suggest [Pagerfanta](https://github.com/whiteoctober/Pagerfanta) to easily make pagination.
+
+First install Pagerfanta using [composer](https://getcomposer.org) by running in a console:
+
+```bash
+composer require pagerfanta/pagerfanta
+```
+
+Then make a query from which models should be taken:
+
+```php
+$query = $orm
+    ->model(User::class)
+    ->where('rank', '>', 5)
+    ->orderBy('rank', 'desc');
+    // Don't call ->get() here
+```
+
+And use Pagerfanta:
+
+```php
+use Finesse\Wired\ThirdParty\PagerfantaAdapter;
+use Pagerfanta\Pagerfanta;
+
+$paginator = new Pagerfanta(new PagerfantaAdapter($query));
+$paginator->setMaxPerPage(10); // The number of models on a page
+$paginator->setCurrentPage(3); // The current page number
+
+$currentPageRows = $paginator->getCurrentPageResults(); // The models for the current page
+$pagesCount = $paginator->getNbPages();                 // Total pages count
+$haveToPaginate = $paginator->haveToPaginate();         // Whether the number of models is higher than the max per page
+```
+
+You can find more reference and examples for Pagerfanta [there](https://github.com/whiteoctober/Pagerfanta#usage).
 
 ### Saving models
 
@@ -166,43 +203,6 @@ Save many models at once:
 ```php
 $orm->save([$user1, $user2, $user3]);
 ```
-
-### Pagination
-
-We suggest [Pagerfanta](https://github.com/whiteoctober/Pagerfanta) to easily make pagination.
-
-First install Pagerfanta using [composer](https://getcomposer.org) by running in a console:
-
-```bash
-composer require pagerfanta/pagerfanta
-```
-
-Then make a query from which models should be taken:
-
-```php
-$query = $orm
-    ->model(User::class)
-    ->where('rank', '>', 5)
-    ->orderBy('rank', 'desc');
-    // Don't call ->get() here
-```
-
-And use Pagerfanta:
-
-```php
-use Finesse\Wired\ThirdParty\PagerfantaAdapter;
-use Pagerfanta\Pagerfanta;
-
-$paginator = new Pagerfanta(new PagerfantaAdapter($query));
-$paginator->setMaxPerPage(10); // The number of rows on a page
-$paginator->setCurrentPage(3); // The current page number
-
-$currentPageRows = $paginator->getCurrentPageResults(); // The rows for the current page
-$pagesCount = $paginator->getNbPages();                 // Total pages count
-$haveToPaginate = $paginator->haveToPaginate();         // Whether the number of results is higher than the max per page
-```
-
-You can find more reference and examples for Pagerfanta [there](https://github.com/whiteoctober/Pagerfanta#usage).
 
 
 ## Versions compatibility
