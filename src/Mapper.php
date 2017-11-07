@@ -4,7 +4,9 @@ namespace Finesse\Wired;
 
 use Finesse\MiniDB\Database;
 use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
+use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\Wired\Exceptions\DatabaseException;
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\NotModelException;
 
 /**
@@ -61,6 +63,24 @@ class Mapper
     }
 
     /**
+     * Saves the given models to the database.
+     *
+     * @param Model|Model[] A model or an array of models
+     * @throws DatabaseException
+     * @throws IncorrectModelException
+     */
+    public function save($models)
+    {
+        if (!is_array($models)) {
+            $models = [$models];
+        }
+
+        foreach ($models as $index => $model) {
+            $this->saveModel($model);
+        }
+    }
+
+    /**
      * @return Database Underlying database
      */
     public function getDatabase(): Database
@@ -84,6 +104,38 @@ class Mapper
                 $className,
                 Model::class
             ));
+        }
+    }
+
+    /**
+     * Saves a single model to the database.
+     *
+     * @param Model $model
+     * @throws DatabaseException
+     * @throws IncorrectModelException
+     */
+    protected function saveModel(Model $model)
+    {
+        $identifierField = $model::getIdentifierField();
+        $row = $model->convertToRow();
+        unset($row[$identifierField]);
+
+        try {
+            // Is the model new or existing
+            if (isset($model->$identifierField)) {
+                $this->database
+                    ->table($model::getTable())
+                    ->where($identifierField, $model->$identifierField)
+                    ->update($row);
+            } else {
+                $model->$identifierField = $this->database
+                    ->table($model::getTable())
+                    ->insertGetId($row, $model->$identifierField);
+            }
+        } catch (DBDatabaseException $exception) {
+            throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
+        } catch (DBInvalidArgumentException $exception) {
+            throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
         }
     }
 }

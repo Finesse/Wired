@@ -5,6 +5,8 @@ namespace Finesse\Wired;
 /**
  * Model. The class represents a database table. An instance represents a table row.
  *
+ * All the model fields must be presented in a model class as public variables.
+ *
  * @author Surgie
  */
 abstract class Model
@@ -17,13 +19,13 @@ abstract class Model
     abstract public static function getTable(): string;
 
     /**
-     * Makes an empty self instance.
+     * Returns the model identifier field name
      *
-     * @return static
+     * @return string
      */
-    public static function createEmpty(): self
+    public static function getIdentifierField(): string
     {
-        return new static();
+        return 'id';
     }
 
     /**
@@ -42,4 +44,53 @@ abstract class Model
 
         return $model;
     }
+
+    /**
+     * Turns itself to a database row.
+     *
+     * @return array Row values indexed by column names
+     */
+    public function convertToRow(): array
+    {
+        $fields = static::getFields();
+        $row = [];
+
+        foreach ($fields as $field) {
+            $row[$field] = $this->$field ?? null;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Makes an empty self instance.
+     *
+     * @return static
+     */
+    protected static function createEmpty(): self
+    {
+        return new static();
+    }
+
+    /**
+     * Returns the list of the model fields names.
+     *
+     * @return string[]
+     */
+    protected function getFields(): array
+    {
+        return getInitialProperties($this->createEmpty());
+    }
+}
+
+/**
+ * Returns the list of not static object properties names. Moved out of the Model class to filter out not public
+ * properties.
+ *
+ * @param object $object
+ * @return string[]
+ */
+function getInitialProperties($object)
+{
+    return array_keys(get_object_vars($object));
 }

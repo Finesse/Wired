@@ -131,4 +131,29 @@ class ModelQueryTest extends TestCase
         $this->assertCount(2, $query->where[0]->criteria);
         $this->assertEquals(User::getTable(), $query->table);
     }
+
+    /**
+     * Tests the `find` method
+     */
+    public function testFind()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        // One existing model
+        $user = $mapper->model(User::class)->find(22);
+        $this->assertInstanceOf(User::class, $user);
+        $this->assertAttributes(['id' => 22, 'name' => 'Vladimir', 'email' => 'vladimir@test.com'], $user);
+
+        // One not existing model
+        $this->assertNull($mapper->model(User::class)->find(49));
+
+        // Many mixed models
+        $users = $mapper->model(User::class)->find([5, 17, 41]);
+        $this->assertInternalType('array', $users);
+        $this->assertCount(2, $users);
+        $this->assertInstanceOf(User::class, $users[0]);
+        $this->assertAttributes(['id' => 5, 'name' => 'Edward', 'email' => 'edward@test.com'], $users[0]);
+        $this->assertInstanceOf(User::class, $users[1]);
+        $this->assertAttributes(['id' => 17, 'name' => 'Quentin', 'email' => 'quentin@test.com'], $users[1]);
+    }
 }

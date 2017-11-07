@@ -49,6 +49,28 @@ class ModelQuery extends QueryProxy
     }
 
     /**
+     * Gets the model by the identifier.
+     *
+     * @param int|string|int[]|string[] $id Identifier or an array of identifiers
+     * @return Model|null|Model[] If an identifier is given, a model object or null is returned. If an array of
+     *     identifiers is given, an array of models is returned (order is not defined).
+     */
+    public function find($id)
+    {
+        if ($this->modelClass === null) {
+            throw new IncorrectQueryException('This query is not a model query');
+        }
+
+        $idField = $this->modelClass::getIdentifierField();
+
+        if (is_array($id)) {
+            return (clone $this)->whereIn($idField, $id)->get();
+        } else {
+            return (clone $this)->where($idField, $id)->first();
+        }
+    }
+
+    /**
      * {@inheritDoc}
      * @return Model|mixed
      */
