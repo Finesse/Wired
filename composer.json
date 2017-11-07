@@ -1,6 +1,6 @@
 {
 	"name": "finesse/wired",
-	"description": "Light standalone ORM with no external configuration",
+	"description": "Light standalone ORM with a query builder and no external configuration",
 	"keywords": ["orm", "sql", "query builder", "database", "mysql", "sqlite", "pdo"],
 	"type": "library",
 	"homepage": "https://github.com/FinesseRus/Wired",

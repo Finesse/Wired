@@ -31,7 +31,7 @@ class ModelQuery extends QueryProxy
     /**
      * {@inheritDoc}
      * @param Query $baseQuery Underlying database query object
-     * @param string|null $modelClass Target model class name
+     * @param string|null $modelClass Target model class name (already checked)
      */
     public function __construct(Query $baseQuery, string $modelClass = null)
     {
@@ -80,5 +80,15 @@ class ModelQuery extends QueryProxy
         }
 
         parent::handleBaseQueryException($exception);
+    }
+
+    /**
+     * {@inheritDoc}
+     * @return static
+     */
+    public function resolveCriteriaGroupClosure(\Closure $callback): QSQuery
+    {
+        $query = new static($this->baseQuery->makeCopyForCriteriaGroup(), $this->modelClass);
+        return $this->resolveClosure($callback, $query);
     }
 }

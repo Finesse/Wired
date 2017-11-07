@@ -100,4 +100,35 @@ class ModelQueryTest extends TestCase
         $this->assertInstanceOf(User::class, $user);
         $this->assertAttributes(['id' => 2, 'name' => 'Bob', 'email' => 'bob@test.com'], $user);
     }
+
+    /**
+     * Tests that the query closures are resolved right
+     */
+    public function testClosureResolving()
+    {
+        $mapper = $this->makeMockDatabase();
+        $query = $mapper->getDatabase()->table(User::getTable());
+        $modelQuery = new class ($query, User::class) extends ModelQuery {
+            public function getModelClass() {
+                return $this->modelClass;
+            }
+        };
+
+        $modelQuery
+            ->where(function ($query) {
+                $this->assertInstanceOf(ModelQuery::class, $query);
+                $this->assertEquals(User::class, $query->getModelClass());
+                $query->where('name', 'Jackie')->orWhere('email', 'like', 'jackie');
+            })
+            ->whereExists(function ($query) {
+                $this->assertInstanceOf(ModelQuery::class, $query);
+                $this->assertNull($query->getModelClass());
+                $query->from('foo')->where('bar', 1);
+            });
+
+        $query = $modelQuery->getBaseQuery();
+        $this->assertCount(2, $query->where);
+        $this->assertCount(2, $query->where[0]->criteria);
+        $this->assertEquals(User::getTable(), $query->table);
+    }
 }
