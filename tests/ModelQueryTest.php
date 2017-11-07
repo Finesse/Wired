@@ -155,5 +155,12 @@ class ModelQueryTest extends TestCase
         $this->assertAttributes(['id' => 5, 'name' => 'Edward', 'email' => 'edward@test.com'], $users[0]);
         $this->assertInstanceOf(User::class, $users[1]);
         $this->assertAttributes(['id' => 17, 'name' => 'Quentin', 'email' => 'quentin@test.com'], $users[1]);
+
+        // No associated model
+        $query = $mapper->getDatabase()->table(User::getTable());
+        $modelQuery = new ModelQuery($query);
+        $this->assertException(IncorrectQueryException::class, function () use ($modelQuery) {
+            $modelQuery->find(10);
+        });
     }
 }

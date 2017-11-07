@@ -17,8 +17,6 @@ use Finesse\Wired\Exceptions\InvalidArgumentException;
 /**
  * Query builder for targeting a model.
  *
- * @todo Fix callback resolving
- *
  * @author Surgie
  */
 class ModelQuery extends QueryProxy
