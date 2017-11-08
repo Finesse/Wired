@@ -94,6 +94,7 @@ class Mapper
         }
 
         // Group models by class
+        /** @var Model[][] $groups */
         $groups = [];
         foreach ($models as $index => $model) {
             if (!($model instanceof Model)) {
@@ -110,7 +111,7 @@ class Mapper
             $ids = [];
 
             foreach ($models as $model) {
-                if (isset($model->$identifierField)) {
+                if ($model->doesExistInDatabase()) {
                     $ids[] = $model->$identifierField;
                     $model->$identifierField = null;
                 }
@@ -171,8 +172,7 @@ class Mapper
         unset($row[$identifierField]);
 
         try {
-            // Is the model new or existing
-            if (isset($model->$identifierField)) {
+            if ($model->doesExistInDatabase()) {
                 $this->database
                     ->table($model::getTable())
                     ->where($identifierField, $model->$identifierField)

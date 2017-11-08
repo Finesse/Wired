@@ -63,6 +63,17 @@ abstract class Model
     }
 
     /**
+     * Does the model instance exist in the database table.
+     *
+     * @return bool
+     */
+    public function doesExistInDatabase(): bool
+    {
+        $identifierField = static::getIdentifierField();
+        return isset($this->$identifierField);
+    }
+
+    /**
      * Makes an empty self instance.
      *
      * @return static
