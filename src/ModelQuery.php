@@ -51,6 +51,9 @@ class ModelQuery extends QueryProxy
      * @param int|string|int[]|string[] $id Identifier or an array of identifiers
      * @return Model|null|Model[] If an identifier is given, a model object or null is returned. If an array of
      *     identifiers is given, an array of models is returned (order is not defined).
+     * @throws InvalidArgumentException
+     * @throws IncorrectQueryException
+     * @throws DatabaseException
      */
     public function find($id)
     {

@@ -163,4 +163,18 @@ class ModelQueryTest extends TestCase
             $modelQuery->find(10);
         });
     }
+
+    /**
+     * Tests the `chunk` method
+     */
+    public function testChunk()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        $mapper->model(User::class)->orderBy('id')->chunk(10, function ($users) {
+            foreach ($users as $user) {
+                $this->assertInstanceOf(User::class, $user);
+            }
+        });
+    }
 }

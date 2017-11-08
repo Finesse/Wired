@@ -175,6 +175,22 @@ $haveToPaginate = $paginator->haveToPaginate();         // Whether the number of
 
 You can find more reference and examples for Pagerfanta [there](https://github.com/whiteoctober/Pagerfanta#usage).
 
+#### Chunking models
+
+If you need to process a large amount of models you can use chunking. In this approach portions of models are retrieved 
+from the database instead of retrieving all the models at once.
+
+```php
+$database
+    ->model(User::class)
+    ->orderBy('id')
+    ->chunk(100, function ($users) {
+        foreach ($users as $user) {
+            // Process the user here
+        }
+    });
+```
+
 ### Saving models
 
 Add a new model to the database:
