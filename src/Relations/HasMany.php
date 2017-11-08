@@ -50,10 +50,8 @@ class HasMany implements RelationInterface
     /**
      * {@inheritDoc}
      */
-    public function applyToQueryWhere(ModelQuery $query, array $arguments)
+    public function applyToQueryWhere(ModelQuery $query, $target)
     {
-        $target = $arguments[0] ?? null;
-
         if ($target instanceof ModelInterface) {
             return $this->applyToQueryWhereWithModel($query, $target);
         }
@@ -102,18 +100,15 @@ class HasMany implements RelationInterface
      */
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
-        $query->whereExists($query->resolveModelSubQueryClosure(
-            $this->modelClass,
-            function (ModelQuery $subQuery) use ($query, $clause) {
-                $identifierField = $this->identifierField ?? $query->modelClass::getIdentifierField();
+        $identifierField = $this->identifierField ?? $query->modelClass::getIdentifierField();
 
-                $subQuery->whereColumn(
-                    $query->getTableIdentifier().'.'.$identifierField,
-                    $subQuery->getTableIdentifier().'.'.$this->foreignField
-                );
+        // whereColumn is applied after to make sure that the relation closure is applied the the AND rule
+        $subQuery = $query->resolveModelSubQueryClosure($this->modelClass, $clause ?? function () {});
+        $subQuery->whereColumn(
+            $query->getTableIdentifier().'.'.$identifierField,
+            $subQuery->getTableIdentifier().'.'.$this->foreignField
+        );
 
-                return $clause ? $clause($subQuery) : $subQuery;
-            }
-        ));
+        $query->whereExists($subQuery);
     }
 }

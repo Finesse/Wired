@@ -109,29 +109,41 @@ class ModelQueryTest extends TestCase
     public function testClosureResolving()
     {
         $mapper = $this->makeMockDatabase();
-        $query = $mapper->getDatabase()->table(User::getTable());
-        $modelQuery = new class ($query, User::class) extends ModelQuery {
-            public function getModelClass() {
-                return $this->modelClass;
-            }
-        };
 
-        $modelQuery
+        $query = $mapper
+            ->model(User::class)
             ->where(function ($query) {
                 $this->assertInstanceOf(ModelQuery::class, $query);
-                $this->assertEquals(User::class, $query->getModelClass());
+                $this->assertEquals(User::class, $query->modelClass);
                 $query->where('name', 'Jackie')->orWhere('email', 'like', 'jackie');
             })
             ->whereExists(function ($query) {
                 $this->assertInstanceOf(ModelQuery::class, $query);
-                $this->assertNull($query->getModelClass());
+                $this->assertNull($query->modelClass);
                 $query->from('foo')->where('bar', 1);
-            });
+            })
+            ->getBaseQuery();
 
-        $query = $modelQuery->getBaseQuery();
         $this->assertCount(2, $query->where);
         $this->assertCount(2, $query->where[0]->criteria);
         $this->assertEquals(User::getTable(), $query->table);
+
+        // `resolveModelSubQueryClosure` with different models
+        $modelQuery = $mapper->model(User::class);
+        $subQuery = $modelQuery->resolveModelSubQueryClosure(Post::class, function ($query) {
+            $this->assertInstanceOf(ModelQuery::class, $query);
+            $this->assertEquals(Post::class, $query->modelClass);
+        });
+        $this->assertInstanceOf(Query::class, $subQuery);
+        $this->assertAttributes(['table' => Post::getTable(), 'tableAlias' => null], $subQuery);
+
+        // `resolveModelSubQueryClosure` with same model
+        $subQuery = $modelQuery->resolveModelSubQueryClosure(User::class, function ($query) {
+            $this->assertInstanceOf(ModelQuery::class, $query);
+            $this->assertEquals(User::class, $query->modelClass);
+        });
+        $this->assertInstanceOf(Query::class, $subQuery);
+        $this->assertAttributes(['table' => User::getTable(), 'tableAlias' => '__wired_reserved_alias_0'], $subQuery);
     }
 
     /**
@@ -204,6 +216,18 @@ class ModelQueryTest extends TestCase
             ->orWhereNoRelation('author')
             ->count());
 
+        // Relations chain criterion
+        $users = $mapper
+            ->model(User::class)
+            ->whereRelation('posts.category', function (ModelQuery $query) {
+                $query->where('title', 'Hockey')->orWhere('id', 3);
+            })
+            ->orderBy('id')
+            ->get();
+        $this->assertCount(2, $users);
+        $this->assertEquals('Frank', $users[0]->name);
+        $this->assertEquals('Quentin', $users[1]->name);
+
         // Not a model query
         $query = $mapper->getDatabase()->table(User::getTable());
         $modelQuery = new ModelQuery($query);
@@ -219,25 +243,5 @@ class ModelQueryTest extends TestCase
         }, function (RelationException $exception) {
             $this->assertStringStartsWith('The relation `undefined_relation` is not defined', $exception->getMessage());
         });
-    }
-
-    /**
-     * Tests the `resolveModelSubQueryClosure` method
-     */
-    public function testResolveModelSubQueryClosure()
-    {
-        $mapper = $this->makeMockDatabase();
-
-        // Different models
-        $modelQuery = $mapper->model(User::class);
-        $subQuery = $modelQuery->resolveModelSubQueryClosure(Post::class, function () {});
-        $this->assertInstanceOf(Query::class, $subQuery);
-        $this->assertAttributes(['table' => Post::getTable(), 'tableAlias' => null], $subQuery);
-
-        // Same model
-        $modelQuery = $mapper->model(User::class);
-        $subQuery = $modelQuery->resolveModelSubQueryClosure(User::class, function () {});
-        $this->assertInstanceOf(Query::class, $subQuery);
-        $this->assertAttributes(['table' => User::getTable(), 'tableAlias' => '__wired_reserved_alias_0'], $subQuery);
     }
 }

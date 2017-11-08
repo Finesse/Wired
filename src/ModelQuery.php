@@ -77,10 +77,11 @@ class ModelQuery extends QueryProxy
     /**
      * Adds a model relation criterion.
      *
-     * @param string $relationName Current model relation name
+     * @param string $relationName Current model relation name. You can specify chained relation by passing multiple
+     *     relations names joined with a dot.
      * @param ModelInterface|\Closure|null $target Relation target. ModelInterface means "must be related to the
      *     specified model". Closure means "must be related to a model that fit the clause in the closure". Null means
-     *     "must be related to anything".
+     *     "must be related to at least one model".
      * @param bool $not Whether the rule should be "not related"
      * @param int $appendRule How the criterion should be appended to the others (on of Criterion::APPEND_RULE_*
      *    constants)
@@ -99,8 +100,17 @@ class ModelQuery extends QueryProxy
             throw new IncorrectQueryException('This query is not a model query');
         }
 
-        $relation = $this->modelClass::getRelation($relationName);
+        // Resolve the chained relation
+        $relationsChain = explode('.', $relationName, 2);
+        if (count($relationsChain) > 1) {
+            $relationName = $relationsChain[0];
+            $target = function (self $query) use ($target, $relationsChain) {
+                $query->whereRelation($relationsChain[1], $target);
+            };
+        }
 
+        // Get a relation object
+        $relation = $this->modelClass::getRelation($relationName);
         if ($relation === null) {
             throw new RelationException(sprintf(
                 'The relation `%s` is not defined in the %s model',
@@ -109,10 +119,10 @@ class ModelQuery extends QueryProxy
             ));
         }
 
+        // Add the relation criterion
         $applyRelation = function (self $query) use ($relation, $target) {
-            $relation->applyToQueryWhere($query, [$target]);
+            $relation->applyToQueryWhere($query, $target);
         };
-
         if ($not) {
             return $this->whereNot($applyRelation, $appendRule);
         } else {
