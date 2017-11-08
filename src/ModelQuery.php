@@ -7,7 +7,6 @@ use Finesse\MiniDB\QueryProxy;
 use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
 use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
-use Finesse\QueryScribe\Exceptions\InvalidArgumentException as QSInvalidArgumentException;
 use Finesse\QueryScribe\Query as QSQuery;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
@@ -87,7 +86,7 @@ class ModelQuery extends QueryProxy
      */
     protected function handleBaseQueryException(\Throwable $exception)
     {
-        if ($exception instanceof DBInvalidArgumentException || $exception instanceof QSInvalidArgumentException) {
+        if ($exception instanceof DBInvalidArgumentException) {
             throw new InvalidArgumentException($exception->getMessage(), $exception->getCode(), $exception);
         }
 

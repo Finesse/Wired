@@ -80,7 +80,7 @@ You can get more information about creating a `Database` instance
 
 ### Models
 
-To make a model make a class anywhere which implements `Finesse\Wired\Model`.
+To make a model make a class anywhere which extends `Finesse\Wired\Model`.
 
 ```php
 use Finesse\Wired\Model;
@@ -103,7 +103,7 @@ class User extends Model
 
 ## Usage
 
-### Retrieve models
+### Retrieving models
 
 Get a model by identifier:
 
@@ -202,6 +202,30 @@ Save many models at once:
 
 ```php
 $orm->save([$user1, $user2, $user3]);
+```
+
+### Deleting models
+
+Delete a model object from the database:
+
+```php
+$orm->delete($user);
+```
+
+Delete many model objects at once:
+
+```php
+$orm->delete([$user1, $user2, $user3]);
+```
+
+Delete many models with a clause:
+
+```php
+$orm
+    ->model(User::class)
+    ->where('rank', '<', 0)
+    ->orWhere('name', 'Cheater')
+    ->delete();
 ```
 
 

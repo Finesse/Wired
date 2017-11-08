@@ -118,6 +118,8 @@ class MapperTest extends TestCase
         $this->assertAttributes(['id' => 13, 'name' => 'Madonna', 'email' => 'madonna@example.com'], $users[1]);
         $this->assertAttributes(['id' => 28, 'name' => 'Michael', 'email' => 'bigbuster@mail.test'], $users[2]);
 
+        // todo: Add a test with mixed model classes
+
         // Database error
         $model = new class extends Model {
             public $id;
@@ -134,6 +136,62 @@ class MapperTest extends TestCase
         $user->name = ['foo', 'bar'];
         $this->assertException(IncorrectModelException::class, function () use ($mapper, $user) {
             $mapper->save($user);
+        });
+    }
+
+    /**
+     * Tests the `delete` method
+     */
+    public function testDelete()
+    {
+        $mapper = $this->makeMockDatabase();
+        /** @var User $user */
+
+        // A single model
+        $user = $mapper->model(User::class)->find(21);
+        $mapper->delete($user);
+        $this->assertEquals(25, $mapper->model(User::class)->count());
+        $this->assertNull($mapper->model(User::class)->find(21));
+        $this->assertNull($user->id);
+
+        // Many models
+        $users = $mapper->model(User::class)->find([3, 14, 25]);
+        $mapper->delete($users);
+        $this->assertEquals(22, $mapper->model(User::class)->count());
+        $this->assertEmpty($mapper->model(User::class)->find([3, 14, 25]));
+        foreach ($users as $user) {
+            $this->assertNull($user->id);
+        }
+
+        // Already deleted model
+        $user = new User();
+        $user->name = 'Colin';
+        $mapper->delete($user);
+        $this->assertNull($user->id);
+
+        // todo: Add a test with mixed model classes
+
+        // Not a model error
+        $this->assertException(NotModelException::class, function () use ($mapper) {
+            $mapper->delete('user');
+        });
+
+        // Database error
+        $model = new class extends Model {
+            public $id = 1;
+            public static function getTable(): string {
+                return 'wrong_table';
+            }
+        };
+        $this->assertException(DatabaseException::class, function () use ($mapper, $model) {
+            $mapper->delete($model);
+        });
+
+        // Incorrect model error
+        $user = new User();
+        $user->id = ['foo', 'bar'];
+        $this->assertException(IncorrectModelException::class, function () use ($mapper, $user) {
+            $mapper->delete($user);
         });
     }
 }

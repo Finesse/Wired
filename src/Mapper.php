@@ -32,7 +32,7 @@ class Mapper
     /**
      * Makes a self instance from a database configuration array.
      *
-     * @see Database::config Configuration array description
+     * @see Database::create Configuration array description
      * @param array $config
      * @return static
      * @throws DatabaseException
@@ -77,6 +77,56 @@ class Mapper
 
         foreach ($models as $index => $model) {
             $this->saveModel($model);
+        }
+    }
+
+    /**
+     * Deletes the given models from the database.
+     *
+     * @param Model|Model[] $models A model or an array of models
+     * @throws DatabaseException
+     * @throws IncorrectModelException
+     */
+    public function delete($models)
+    {
+        if (!is_array($models)) {
+            $models = [$models];
+        }
+
+        // Group models by class
+        $groups = [];
+        foreach ($models as $index => $model) {
+            if (!($model instanceof Model)) {
+                throw new NotModelException('Argument $models['.$index.'] is not a model');
+            }
+
+            $groups[get_class($model)][] = $model;
+        }
+
+        // Delete all models in a group in a single query
+        foreach ($groups as $class => $models) {
+            /** @var Model $class */
+            $identifierField = $class::getIdentifierField();
+            $ids = [];
+
+            foreach ($models as $model) {
+                if (isset($model->$identifierField)) {
+                    $ids[] = $model->$identifierField;
+                    $model->$identifierField = null;
+                }
+            }
+
+            if (empty($ids)) {
+                continue;
+            }
+
+            try {
+                $this->database->table($class::getTable())->whereIn($identifierField, $ids)->delete();
+            } catch (DBDatabaseException $exception) {
+                throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
+            } catch (DBInvalidArgumentException $exception) {
+                throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
+            }
         }
     }
 

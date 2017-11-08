@@ -77,9 +77,9 @@ abstract class Model
      *
      * @return string[]
      */
-    protected function getFields(): array
+    protected static function getFields(): array
     {
-        return getInitialProperties($this->createEmpty());
+        return getInitialProperties(static::createEmpty());
     }
 }
 
