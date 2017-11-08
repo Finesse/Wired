@@ -14,8 +14,6 @@ use Finesse\Wired\Exceptions\ExceptionInterface;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\RelationException;
-use Finesse\Wired\Relations\BelongsTo;
-use Finesse\Wired\Relations\HasMany;
 
 /**
  * Query builder for targeting a model.
@@ -36,8 +34,8 @@ class ModelQuery extends QueryProxy
      */
     public function __construct(Query $baseQuery, string $modelClass = null)
     {
-        $this->modelClass = $modelClass;
         parent::__construct($baseQuery);
+        $this->setModelClass($modelClass);
     }
 
     /**
@@ -47,6 +45,16 @@ class ModelQuery extends QueryProxy
     public function getBaseQuery(): QSQuery
     {
         return parent::getBaseQuery();
+    }
+
+    /**
+     * FOR INNER USAGE ONLY!
+     *
+     * @param string|null $modelClass Target model class name (already checked)
+     */
+    public function setModelClass(string $modelClass = null)
+    {
+        $this->modelClass = $modelClass;
     }
 
     /**
@@ -109,19 +117,15 @@ class ModelQuery extends QueryProxy
             ));
         }
 
-        $relation = $this->modelClass::$relationName();
+        $applyRelation = function (self $query) use ($relation, $target) {
+            $relation->applyToQueryWhere($query, [$target]);
+        };
 
-        if ($relation instanceof BelongsTo) {
-            return $this->whereBelongsToRelation($relation, $target, $not, $appendRule);
+        if ($not) {
+            return $this->whereNot($applyRelation, $appendRule);
+        } else {
+            return $this->where($applyRelation, null, null, $appendRule);
         }
-        if ($relation instanceof HasMany) {
-            return $this->whereHasManyRelation($relation, $target, $not, $appendRule);
-        }
-
-        throw new RelationException(sprintf(
-            'The given relation %s is unknown',
-            is_object($relation) ? get_class($relation) : '('.gettype($relation).')'
-        ));
     }
 
     /**
@@ -197,139 +201,5 @@ class ModelQuery extends QueryProxy
         }
 
         return parent::handleBaseQueryException($exception);
-    }
-
-    /**
-     * Adds a BelongsTo relation clause.
-     *
-     * @param BelongsTo $relation Relation
-     * @param ModelInterface|\Closure|null $target Relation target. ModelInterface means "must belong to the specified
-     *     model". Closure means "must belong to models that fit the clause in the closure". Null means "must belong to
-     *     anything".
-     * @param bool $not
-     * @param int $appendRule
-     * @return $this
-     * @throws RelationException
-     * @throws InvalidArgumentException
-     */
-    protected function whereBelongsToRelation(
-        BelongsTo $relation,
-        $target = null,
-        bool $not = false,
-        int $appendRule = Criterion::APPEND_RULE_AND
-    ): self {
-        return $this->whereRelatedModel(
-            $relation->foreignField,
-            $relation->identifierField ?? $relation->modelClass::getIdentifierField(),
-            $relation->modelClass,
-            $target,
-            $not,
-            $appendRule
-        );
-    }
-
-    /**
-     * Adds a HasMany relation clause.
-     *
-     * @param BelongsTo $relation Relation
-     * @param ModelInterface|\Closure|null $target Relation target. ModelInterface means "must have the specified
-     *     model". Closure means "must have a model that fit the clause in the closure". Null means "must have
-     *     anything".
-     * @param bool $not
-     * @param int $appendRule
-     * @return $this
-     * @throws RelationException
-     * @throws InvalidArgumentException
-     */
-    protected function whereHasManyRelation(
-        HasMany $relation,
-        $target = null,
-        bool $not = false,
-        int $appendRule = Criterion::APPEND_RULE_AND
-    ): self {
-        return $this->whereRelatedModel(
-            $relation->identifierField ?? $relation->modelClass::getIdentifierField(),
-            $relation->foreignField,
-            $relation->modelClass,
-            $target,
-            $not,
-            $appendRule
-        );
-    }
-
-    /**
-     * Adds a related model clause.
-     *
-     * @param string $parentField The field name of the current query model
-     * @param string $childField The field name of the related model
-     * @param string|ModelInterface $childModelClass The related model class name
-     * @param ModelInterface|\Closure|null $target Relation target. ModelInterface means "must be related to the
-     *     specified model". Closure means "must be related to a model that fit the clause in the closure". Null means
-     *     "must be related to anything".
-     * @param bool $not
-     * @param int $appendRule
-     * @return $this
-     * @throws RelationException
-     * @throws InvalidArgumentException
-     */
-    protected function whereRelatedModel(
-        string $parentField,
-        string $childField,
-        string $childModelClass,
-        $child = null,
-        bool $not = false,
-        int $appendRule = Criterion::APPEND_RULE_AND
-    ): self {
-        if ($child instanceof ModelInterface) {
-            if (!$child instanceof $childModelClass) {
-                throw new RelationException(sprintf(
-                    'The given model %s is not %s model',
-                    get_class($child),
-                    $childModelClass
-                ));
-            }
-
-            return $this->where(
-                $parentField,
-                $not ? '!=' : '=',
-                $child->$childField,
-                $appendRule
-            );
-        }
-
-        if ($child === null || $child instanceof \Closure) {
-            return $this->whereExists(function (self $query) use ($parentField, $childField, $childModelClass, $child) {
-                $parentTableName = $this->baseQuery->tableAlias ?? $this->baseQuery->table;
-                $childTable = $childModelClass::getTable();
-                $childTableAlias = null;
-
-                if ($childTable === $parentTableName) {
-                    for ($i = 0;; ++$i) {
-                        $childTableAlias = '__wired_reserved_alias_'.$i;
-                        if ($childTableAlias !== $parentTableName) {
-                            break;
-                        }
-                    }
-                }
-
-                $childTableName = $childTableAlias ?? $childTable;
-
-                $query->modelClass = $childModelClass;
-                $query->table($childTable, $childTableAlias);
-                $query->whereColumn(
-                    $parentTableName.'.'.$parentField,
-                    $childTableName.'.'.$childField
-                );
-
-                return $child ? $child($query) : $query;
-            }, $not, $appendRule);
-        }
-
-        throw new InvalidArgumentException(sprintf(
-            'The second argument expected to be %s, %s or null, %s given',
-            ModelInterface::class,
-            \Closure::class,
-            is_object($child) ? get_class($child) : gettype($child)
-        ));
     }
 }

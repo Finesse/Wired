@@ -2,8 +2,11 @@
 
 namespace Finesse\Wired\Relations;
 
+use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
+use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelInterface;
+use Finesse\Wired\ModelQuery;
 use Finesse\Wired\RelationInterface;
 
 /**
@@ -16,18 +19,18 @@ class HasMany implements RelationInterface
     /**
      * @var string|ModelInterface The object model class name (checked)
      */
-    public $modelClass;
+    protected $modelClass;
 
     /**
      * @var string The name of the object model field which contains an identifier of a subject model
      */
-    public $foreignField;
+    protected $foreignField;
 
     /**
      * @var string|null The name of the subject model field which contains a value which the foreign key targets. Null
      *     means that the default subject model identifier field should be used.
      */
-    public $identifierField;
+    protected $identifierField;
 
     /**
      * @param string $modelClass The object model class name
@@ -42,5 +45,64 @@ class HasMany implements RelationInterface
         $this->modelClass = $modelClass;
         $this->foreignField = $foreignField;
         $this->identifierField = $identifierField;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function applyToQueryWhere(ModelQuery $query, array $arguments)
+    {
+        $target = $arguments[0] ?? null;
+
+        if ($target instanceof ModelInterface) {
+            if (!$target instanceof $this->modelClass) {
+                throw new RelationException(sprintf(
+                    'The given model %s is not a %s model',
+                    get_class($target),
+                    $this->modelClass
+                ));
+            }
+
+            $query->where(
+                $this->identifierField ?? $target::getIdentifierField(),
+                $target->{$this->foreignField}
+            );
+            return;
+        }
+
+        if ($target === null || $target instanceof \Closure) {
+            $query->whereExists(function (ModelQuery $subQuery) use ($query, $target) {
+                $baseQuery = $query->getBaseQuery();
+                $queryTableName = $baseQuery->tableAlias ?? $baseQuery->table;
+                $subQueryTable = $this->modelClass::getTable();
+                $subQueryTableAlias = null;
+
+                if ($subQueryTable === $queryTableName) {
+                    $counter = 0;
+                    do {
+                        $subQueryTableAlias = '__wired_reserved_alias_'.$counter++;
+                    } while ($subQueryTableAlias === $queryTableName);
+                }
+
+                $subQueryTableName = $subQueryTableAlias ?? $subQueryTable;
+
+                $subQuery->setModelClass($this->modelClass);
+                $subQuery->table($subQueryTable, $subQueryTableAlias);
+                $subQuery->whereColumn(
+                    $queryTableName.'.'.($this->identifierField ?? $this->modelClass::getIdentifierField()),
+                    $subQueryTableName.'.'.$this->foreignField
+                );
+
+                return $target ? $target($subQuery) : $subQuery;
+            });
+            return;
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'The relation argument expected to be %s, %s or null, %s given',
+            ModelInterface::class,
+            \Closure::class,
+            is_object($target) ? get_class($target) : gettype($target)
+        ));
     }
 }
