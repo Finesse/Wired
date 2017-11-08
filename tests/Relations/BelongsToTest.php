@@ -34,8 +34,8 @@ class BelongsToTest extends TestCase
         $user = $mapper->model(User::class)->where('name', 'Kenny')->first();
         $posts = $mapper->model(Post::class)->whereRelation('author', $user)->orderBy('id')->get();
         $this->assertCount(2, $posts);
-        $this->assertEquals(6, $posts[0]->id);
-        $this->assertEquals(12, $posts[1]->id);
+        $this->assertEquals(6, $posts[0]->key);
+        $this->assertEquals(12, $posts[1]->key);
 
         // Relation with clause
         $posts = $mapper
@@ -46,8 +46,8 @@ class BelongsToTest extends TestCase
             ->orderBy('id')
             ->get();
         $this->assertCount(2, $posts);
-        $this->assertEquals(4, $posts[0]->id);
-        $this->assertEquals(10, $posts[1]->id);
+        $this->assertEquals(4, $posts[0]->key);
+        $this->assertEquals(10, $posts[1]->key);
 
         // Self relation
         $categories = $mapper

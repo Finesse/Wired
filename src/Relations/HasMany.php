@@ -53,38 +53,13 @@ class HasMany implements RelationInterface
     public function applyToQueryWhere(ModelQuery $query, array $arguments)
     {
         $target = $arguments[0] ?? null;
-        $foreignField = $this->foreignField;
-        $identifierField = $this->identifierField ?? $this->modelClass::getIdentifierField();
 
         if ($target instanceof ModelInterface) {
-            if (!$target instanceof $this->modelClass) {
-                throw new RelationException(sprintf(
-                    'The given model %s is not a %s model',
-                    get_class($target),
-                    $this->modelClass
-                ));
-            }
-
-            $query->where(
-                $identifierField,
-                $target->$foreignField
-            );
-            return;
+            return $this->applyToQueryWhereWithModel($query, $target);
         }
 
         if ($target === null || $target instanceof \Closure) {
-            $query->whereExists($query->resolveModelSubQueryClosure(
-                $this->modelClass,
-                function (ModelQuery $subQuery) use ($query, $target, $foreignField, $identifierField) {
-                    $subQuery->whereColumn(
-                        $query->getTableIdentifier().'.'.$identifierField,
-                        $subQuery->getTableIdentifier().'.'.$foreignField
-                    );
-
-                    return $target ? $target($subQuery) : $subQuery;
-                }
-            ));
-            return;
+            return $this->applyToQueryWhereWithClause($query, $target);
         }
 
         throw new InvalidArgumentException(sprintf(
@@ -92,6 +67,53 @@ class HasMany implements RelationInterface
             ModelInterface::class,
             \Closure::class,
             is_object($target) ? get_class($target) : gettype($target)
+        ));
+    }
+
+    /**
+     * Applies itself with a model object to the where part of a query.
+     *
+     * @param ModelQuery $query Where to apply
+     * @param ModelInterface $model The model
+     * @throws RelationException
+     * @throws InvalidArgumentException
+     */
+    protected function applyToQueryWhereWithModel(ModelQuery $query, ModelInterface $model)
+    {
+        if (!$model instanceof $this->modelClass) {
+            throw new RelationException(sprintf(
+                'The given model %s is not a %s model',
+                get_class($model),
+                $this->modelClass
+            ));
+        }
+
+        $query->where(
+            $this->identifierField ?? $query->modelClass::getIdentifierField(),
+            $model->{$this->foreignField}
+        );
+    }
+
+    /**
+     * Applies itself with a callback clause to the where part of a query.
+     *
+     * @param ModelQuery $query Where to apply
+     * @param \Closure $clause The clause. Null means no clause.
+     */
+    protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
+    {
+        $query->whereExists($query->resolveModelSubQueryClosure(
+            $this->modelClass,
+            function (ModelQuery $subQuery) use ($query, $clause) {
+                $identifierField = $this->identifierField ?? $query->modelClass::getIdentifierField();
+
+                $subQuery->whereColumn(
+                    $query->getTableIdentifier().'.'.$identifierField,
+                    $subQuery->getTableIdentifier().'.'.$this->foreignField
+                );
+
+                return $clause ? $clause($subQuery) : $subQuery;
+            }
         ));
     }
 }

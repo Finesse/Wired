@@ -12,7 +12,7 @@ use Finesse\Wired\Relations\BelongsTo;
  */
 class Post extends Model
 {
-    public $id;
+    public $key;
     public $author_id;
     public $category_id;
     public $text;
@@ -21,6 +21,11 @@ class Post extends Model
     public static function getTable(): string
     {
         return 'posts';
+    }
+
+    public static function getIdentifierField(): string
+    {
+        return 'key';
     }
 
     public static function author()

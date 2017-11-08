@@ -126,7 +126,7 @@ class MapperTest extends TestCase
         $post->text = 'Lorem ipsum';
         $mapper->save([$user, $post]);
         $this->assertEquals(29, $user->id);
-        $this->assertEquals(18, $post->id);
+        $this->assertEquals(18, $post->key);
 
         // Database error
         $model = new class extends Model {

@@ -24,9 +24,10 @@ use Finesse\Wired\Exceptions\RelationException;
 class ModelQuery extends QueryProxy
 {
     /**
-     * @var string|null|ModelInterface Target model class name
+     * @var string|null|ModelInterface Target model class name (actually ModelInterface instance is not allowed, it
+     *     is specified here to type-hint IDE)
      */
-    protected $modelClass;
+    public $modelClass;
 
     /**
      * {@inheritDoc}
