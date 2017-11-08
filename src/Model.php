@@ -9,19 +9,10 @@ namespace Finesse\Wired;
  *
  * @author Surgie
  */
-abstract class Model
+abstract class Model implements ModelInterface
 {
     /**
-     * Return the model database table name (not prefixed)
-     *
-     * @return string
-     */
-    abstract public static function getTable(): string;
-
-    /**
-     * Returns the model identifier field name
-     *
-     * @return string
+     * {@inheritDoc}
      */
     public static function getIdentifierField(): string
     {
@@ -29,12 +20,9 @@ abstract class Model
     }
 
     /**
-     * Makes a self instance from a database row.
-     *
-     * @param array $row Row values. Indexed by column names.
-     * @return static
+     * {@inheritDoc}
      */
-    public static function createFromRow(array $row): self
+    public static function createFromRow(array $row): ModelInterface
     {
         $model = static::createEmpty();
 
@@ -46,9 +34,7 @@ abstract class Model
     }
 
     /**
-     * Turns itself to a database row.
-     *
-     * @return array Row values indexed by column names
+     * {@inheritDoc}
      */
     public function convertToRow(): array
     {
@@ -63,14 +49,30 @@ abstract class Model
     }
 
     /**
-     * Does the model instance exist in the database table.
-     *
-     * @return bool
+     * {@inheritDoc}
      */
     public function doesExistInDatabase(): bool
     {
         $identifierField = static::getIdentifierField();
         return isset($this->$identifierField);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public static function getRelation(string $name)
+    {
+        if (!doesMethodExist(static::class, $name)) {
+            return null;
+        }
+
+        $relation = static::$name();
+
+        if ($relation instanceof RelationInterface) {
+            return $relation;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -90,7 +92,7 @@ abstract class Model
      */
     protected static function getFields(): array
     {
-        return getInitialProperties(static::createEmpty());
+        return getObjectProperties(static::createEmpty());
     }
 }
 
@@ -101,7 +103,17 @@ abstract class Model
  * @param object $object
  * @return string[]
  */
-function getInitialProperties($object)
+function getObjectProperties($object)
 {
     return array_keys(get_object_vars($object));
+}
+
+/**
+ * Does the same as the `method_exists` function. Moved out of the Model class to filter out not public methods.
+ *
+ * @see method_exists
+ */
+function doesMethodExist($object, string $name)
+{
+    return method_exists($object, $name);
 }

@@ -63,9 +63,11 @@ class TestCase extends BaseTestCase
             'prefix' => 'test_'
         ]);
 
+        // Just to be sure that the table prefix is applied
         $this->assertNotEquals('users', $database->addTablePrefix('users'));
+
         $database->statement('
-            CREATE TABLE '.$database->addTablePrefix('users').'(
+            CREATE TABLE '.$database->addTablePrefix('users').' (
                 id INTEGER PRIMARY KEY ASC, 
                 name TEXT, 
                 email TEXT
@@ -98,6 +100,53 @@ class TestCase extends BaseTestCase
             ['id' => 24, 'name' => 'Xenia', 'email' => 'xenia@test.com'],
             ['id' => 25, 'name' => 'Yury', 'email' => 'yury@test.com'],
             ['id' => 26, 'name' => 'Zach', 'email' => 'zach@test.com']
+        ]);
+
+        $database->statement('
+            CREATE TABLE '.$database->addTablePrefix('categories').' (
+                id INTEGER PRIMARY KEY ASC,
+                parent_id INTEGER, 
+                title TEXT
+            )
+        ');
+        $database->table('categories')->insert([
+            ['id' => 1, 'parent_id' => null, 'title' => 'News'],
+            ['id' => 2, 'parent_id' => null, 'title' => 'Articles'],
+            ['id' => 3, 'parent_id' => 1, 'title' => 'Economics'],
+            ['id' => 4, 'parent_id' => 1, 'title' => 'Sport'],
+            ['id' => 5, 'parent_id' => 4, 'title' => 'Hockey'],
+            ['id' => 6, 'parent_id' => 4, 'title' => 'Football'],
+            ['id' => 7, 'parent_id' => 2, 'title' => 'Lifehacks'],
+            ['id' => 8, 'parent_id' => 2, 'title' => 'Receipts']
+        ]);
+
+        $database->statement('
+            CREATE TABLE '.$database->addTablePrefix('posts').' (
+                id INTEGER PRIMARY KEY ASC,
+                author_id INTEGER, 
+                category_id INTEGER, 
+                text TEXT,
+                created_at INTEGER
+            )
+        ');
+        $database->table('posts')->insert([
+            ['id' => 1, 'author_id' => 6, 'created_at' => mktime(0, 0, 0, 11, 1, 2017), 'category_id' => 1, 'text' => 'Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes'],
+            ['id' => 2, 'author_id' => 12, 'created_at' => mktime(14, 0, 0, 11, 1, 2017), 'category_id' => 2, 'text' => 'But I warn you, if you don’t tell me that this means war, if you still try to defend the infamies and horrors perpetrated by that Antichrist'],
+            ['id' => 3, 'author_id' => 17, 'created_at' => mktime(0, 0, 0, 11, 2, 2017), 'category_id' => 3, 'text' => 'I really believe he is Antichrist'],
+            ['id' => 4, 'author_id' => 26, 'created_at' => mktime(12, 0, 0, 11, 2, 2017), 'category_id' => 4, 'text' => 'I will have nothing more to do with you and you are no longer my friend, no longer my ‘faithful slave,’ as you call yourself!'],
+            ['id' => 5, 'author_id' => 6, 'created_at' => mktime(0, 0, 0, 11, 3, 2017), 'category_id' => 5, 'text' => 'But how do you do?'],
+            ['id' => 6, 'author_id' => 11, 'created_at' => mktime(13, 0, 0, 11, 3, 2017), 'category_id' => 6, 'text' => ' I see I have frightened you—sit down and tell me all the news'],
+            ['id' => 7, 'author_id' => 1, 'created_at' => mktime(0, 0, 0, 11, 4, 2017), 'category_id' => 7, 'text' => 'Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes'],
+            ['id' => 8, 'author_id' => 17, 'created_at' => mktime(16, 0, 0, 11, 4, 2017), 'category_id' => 8, 'text' => 'It was in July, 1805, and the speaker was the well-known Anna Pavlovna Scherer, maid of honor and favorite of the Empress Marya Fedorovna'],
+            ['id' => 9, 'author_id' => 6, 'created_at' => mktime(0, 0, 0, 11, 5, 2017), 'category_id' => 5, 'text' => 'Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes'],
+            ['id' => 10, 'author_id' => 24, 'created_at' => mktime(9, 0, 0, 11, 5, 2017), 'category_id' => null, 'text' => 'With these words she greeted Prince Vasili Kuragin, a man of high rank and importance, who was the first to arrive at her reception'],
+            ['id' => 11, 'author_id' => -10, 'created_at' => mktime(0, 0, 0, 11, 6, 2017), 'category_id' => 2, 'text' => 'Anna Pavlovna had had a cough for some days'],
+            ['id' => 12, 'author_id' => 11, 'created_at' => mktime(2, 0, 0, 11, 6, 2017), 'category_id' => 7, 'text' => 'She was, as she said, suffering from la grippe; grippe being then a new word in St. Petersburg, used only by the elite'],
+            ['id' => 13, 'author_id' => 8, 'created_at' => mktime(0, 0, 0, 11, 7, 2017), 'category_id' => 4, 'text' => 'All her invitations without exception, written in French, and delivered by a scarlet-liveried footman that morning, ran as follows'],
+            ['id' => 14, 'author_id' => 3, 'created_at' => mktime(19, 0, 0, 11, 7, 2017), 'category_id' => 6, 'text' => 'If you have nothing better to do, Count (or Prince), and if the prospect of spending an evening with a poor invalid is not too terrible, I shall be very charmed to see you tonight between 7 and 10—Annette Scherer'],
+            ['id' => 15, 'author_id' => null, 'created_at' => mktime(0, 0, 0, 11, 8, 2017), 'category_id' => 3, 'text' => 'Heavens! what a virulent attack!'],
+            ['id' => 16, 'author_id' => 10, 'created_at' => mktime(5, 0, 0, 11, 8, 2017), 'category_id' => 8, 'text' => 'Replied the prince, not in the least disconcerted by this reception'],
+            ['id' => 17, 'author_id' => 6, 'created_at' => mktime(11, 0, 0, 11, 8, 2017), 'category_id' => null, 'text' => 'He had just entered, wearing an embroidered court uniform, knee breeches, and shoes, and had stars on his breast and a serene expression on his flat face'],
         ]);
 
         return new Mapper($database);

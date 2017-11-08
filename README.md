@@ -18,7 +18,7 @@ Key features:
 * No static facades, only explicit delivery using dependency injection.
 * Has a query builder.
 * Exceptions on errors.
-* Build on top of small modules which can be used separately (i.e. 
+* Build on top of small modules which can be used separately (e.g. 
   [query builder](https://github.com/FinesseRus/QueryScribe), 
   [database connector](https://github.com/FinesseRus/MicroDB)).
 
@@ -80,7 +80,7 @@ You can get more information about creating a `Database` instance
 
 ### Models
 
-To make a model make a class anywhere which extends `Finesse\Wired\Model`.
+To make a model make a class anywhere which extends `Finesse\Wired\Model` or implements `Finesse\Wired\ModelInterface`.
 
 ```php
 use Finesse\Wired\Model;

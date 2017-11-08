@@ -12,6 +12,10 @@ use Finesse\Wired\Exceptions\NotModelException;
 /**
  * Mapper. Retrieves and saves models.
  *
+ * Relations features:
+ *  * todo: Eager loading related models
+ *  * todo: Associate a related model with a model
+ *
  * @author Surgie
  */
 class Mapper
@@ -55,9 +59,9 @@ class Mapper
      */
     public function model(string $className): ModelQuery
     {
-        $this->checkModelClass('The given model class', $className);
+        NotModelException::checkModelClass('The given model class', $className);
 
-        /** @var Model $className */
+        /** @var ModelInterface $className */
         $query = $this->database->table($className::getTable());
         return new ModelQuery($query, $className);
     }
@@ -65,7 +69,7 @@ class Mapper
     /**
      * Saves the given models to the database.
      *
-     * @param Model|Model[] A model or an array of models
+     * @param ModelInterface|ModelInterface[] A model or an array of models
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
@@ -83,7 +87,7 @@ class Mapper
     /**
      * Deletes the given models from the database.
      *
-     * @param Model|Model[] $models A model or an array of models
+     * @param ModelInterface|ModelInterface[] $models A model or an array of models
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
@@ -94,10 +98,10 @@ class Mapper
         }
 
         // Group models by class
-        /** @var Model[][] $groups */
+        /** @var ModelInterface[][] $groups */
         $groups = [];
         foreach ($models as $index => $model) {
-            if (!($model instanceof Model)) {
+            if (!($model instanceof ModelInterface)) {
                 throw new NotModelException('Argument $models['.$index.'] is not a model');
             }
 
@@ -106,7 +110,7 @@ class Mapper
 
         // Delete all models in a group in a single query
         foreach ($groups as $class => $models) {
-            /** @var Model $class */
+            /** @var ModelInterface $class */
             $identifierField = $class::getIdentifierField();
             $ids = [];
 
@@ -140,32 +144,13 @@ class Mapper
     }
 
     /**
-     * Checks that the given class name is a model class.
-     *
-     * @param string $name Value name
-     * @param string $className Class name
-     * @throws NotModelException If the class is not a model
-     */
-    protected function checkModelClass(string $name, string $className)
-    {
-        if (!is_a($className, Model::class, true)) {
-            throw new NotModelException(sprintf(
-                '%s (%s) is not a model class name implementation (%s)',
-                $name,
-                $className,
-                Model::class
-            ));
-        }
-    }
-
-    /**
      * Saves a single model to the database.
      *
-     * @param Model $model
+     * @param ModelInterface $model
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
-    protected function saveModel(Model $model)
+    protected function saveModel(ModelInterface $model)
     {
         $identifierField = $model::getIdentifierField();
         $row = $model->convertToRow();

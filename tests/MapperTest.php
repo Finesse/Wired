@@ -7,6 +7,7 @@ use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Mapper;
 use Finesse\Wired\Model;
+use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
 
 /**
@@ -118,7 +119,14 @@ class MapperTest extends TestCase
         $this->assertAttributes(['id' => 13, 'name' => 'Madonna', 'email' => 'madonna@example.com'], $users[1]);
         $this->assertAttributes(['id' => 28, 'name' => 'Michael', 'email' => 'bigbuster@mail.test'], $users[2]);
 
-        // todo: Add a test with mixed model classes
+        // Mixed model classes
+        $user = new User();
+        $user->name = 'Leo';
+        $post = new Post();
+        $post->text = 'Lorem ipsum';
+        $mapper->save([$user, $post]);
+        $this->assertEquals(29, $user->id);
+        $this->assertEquals(18, $post->id);
 
         // Database error
         $model = new class extends Model {
@@ -169,7 +177,14 @@ class MapperTest extends TestCase
         $mapper->delete($user);
         $this->assertNull($user->id);
 
-        // todo: Add a test with mixed model classes
+        // Mixed model classes
+        $user = $mapper->model(User::class)->find(16);
+        $post = $mapper->model(Post::class)->find(5);
+        $mapper->delete([$user, $post]);
+        $this->assertEquals(21, $mapper->model(User::class)->count());
+        $this->assertEquals(16, $mapper->model(Post::class)->count());
+        $this->assertNull($mapper->model(User::class)->find(16));
+        $this->assertNull($mapper->model(Post::class)->find(5));
 
         // Not a model error
         $this->assertException(NotModelException::class, function () use ($mapper) {

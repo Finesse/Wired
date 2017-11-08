@@ -4,7 +4,7 @@ namespace Finesse\Wired\ThirdParty;
 
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
-use Finesse\Wired\Model;
+use Finesse\Wired\ModelInterface;
 use Finesse\Wired\ModelQuery;
 use Pagerfanta\Adapter\AdapterInterface;
 
@@ -41,7 +41,7 @@ class PagerfantaAdapter implements AdapterInterface
 
     /**
      * {@inheritDoc}
-     * @return Model[]
+     * @return ModelInterface[]
      * @throws DatabaseException
      * @throws IncorrectQueryException
      */
