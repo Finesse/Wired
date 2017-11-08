@@ -220,4 +220,24 @@ class ModelQueryTest extends TestCase
             $this->assertStringStartsWith('The relation `undefined_relation` is not defined', $exception->getMessage());
         });
     }
+
+    /**
+     * Tests the `resolveModelSubQueryClosure` method
+     */
+    public function testResolveModelSubQueryClosure()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        // Different models
+        $modelQuery = $mapper->model(User::class);
+        $subQuery = $modelQuery->resolveModelSubQueryClosure(Post::class, function () {});
+        $this->assertInstanceOf(Query::class, $subQuery);
+        $this->assertAttributes(['table' => Post::getTable(), 'tableAlias' => null], $subQuery);
+
+        // Same model
+        $modelQuery = $mapper->model(User::class);
+        $subQuery = $modelQuery->resolveModelSubQueryClosure(User::class, function () {});
+        $this->assertInstanceOf(Query::class, $subQuery);
+        $this->assertAttributes(['table' => User::getTable(), 'tableAlias' => '__wired_reserved_alias_0'], $subQuery);
+    }
 }

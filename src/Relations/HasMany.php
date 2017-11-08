@@ -53,6 +53,8 @@ class HasMany implements RelationInterface
     public function applyToQueryWhere(ModelQuery $query, array $arguments)
     {
         $target = $arguments[0] ?? null;
+        $foreignField = $this->foreignField;
+        $identifierField = $this->identifierField ?? $this->modelClass::getIdentifierField();
 
         if ($target instanceof ModelInterface) {
             if (!$target instanceof $this->modelClass) {
@@ -64,37 +66,24 @@ class HasMany implements RelationInterface
             }
 
             $query->where(
-                $this->identifierField ?? $target::getIdentifierField(),
-                $target->{$this->foreignField}
+                $identifierField,
+                $target->$foreignField
             );
             return;
         }
 
         if ($target === null || $target instanceof \Closure) {
-            $query->whereExists(function (ModelQuery $subQuery) use ($query, $target) {
-                $baseQuery = $query->getBaseQuery();
-                $queryTableName = $baseQuery->tableAlias ?? $baseQuery->table;
-                $subQueryTable = $this->modelClass::getTable();
-                $subQueryTableAlias = null;
+            $query->whereExists($query->resolveModelSubQueryClosure(
+                $this->modelClass,
+                function (ModelQuery $subQuery) use ($query, $target, $foreignField, $identifierField) {
+                    $subQuery->whereColumn(
+                        $query->getTableIdentifier().'.'.$identifierField,
+                        $subQuery->getTableIdentifier().'.'.$foreignField
+                    );
 
-                if ($subQueryTable === $queryTableName) {
-                    $counter = 0;
-                    do {
-                        $subQueryTableAlias = '__wired_reserved_alias_'.$counter++;
-                    } while ($subQueryTableAlias === $queryTableName);
+                    return $target ? $target($subQuery) : $subQuery;
                 }
-
-                $subQueryTableName = $subQueryTableAlias ?? $subQueryTable;
-
-                $subQuery->setModelClass($this->modelClass);
-                $subQuery->table($subQueryTable, $subQueryTableAlias);
-                $subQuery->whereColumn(
-                    $queryTableName.'.'.($this->identifierField ?? $this->modelClass::getIdentifierField()),
-                    $subQueryTableName.'.'.$this->foreignField
-                );
-
-                return $target ? $target($subQuery) : $subQuery;
-            });
+            ));
             return;
         }
 

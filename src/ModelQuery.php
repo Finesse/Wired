@@ -7,12 +7,13 @@ use Finesse\MiniDB\QueryProxy;
 use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
 use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
-use Finesse\QueryScribe\Query as QSQuery;
+use Finesse\QueryScribe\Query as OriginalQuery;
 use Finesse\QueryScribe\QueryBricks\Criterion;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 
 /**
@@ -35,26 +36,16 @@ class ModelQuery extends QueryProxy
     public function __construct(Query $baseQuery, string $modelClass = null)
     {
         parent::__construct($baseQuery);
-        $this->setModelClass($modelClass);
+        $this->modelClass = $modelClass;
     }
 
     /**
      * {@inheritDoc}
      * @return Query
      */
-    public function getBaseQuery(): QSQuery
+    public function getBaseQuery(): OriginalQuery
     {
         return parent::getBaseQuery();
-    }
-
-    /**
-     * FOR INNER USAGE ONLY!
-     *
-     * @param string|null $modelClass Target model class name (already checked)
-     */
-    public function setModelClass(string $modelClass = null)
-    {
-        $this->modelClass = $modelClass;
     }
 
     /**
@@ -163,12 +154,50 @@ class ModelQuery extends QueryProxy
 
     /**
      * {@inheritDoc}
-     * @return static
+     * @return Query
      */
-    public function resolveCriteriaGroupClosure(\Closure $callback): QSQuery
+    public function resolveCriteriaGroupClosure(\Closure $callback): OriginalQuery
     {
         $query = new static($this->baseQuery->makeCopyForCriteriaGroup(), $this->modelClass);
         return $this->resolveClosure($callback, $query);
+    }
+
+    /**
+     * Resolves a closure given instead of a subquery. Gives a query with applied model table (with prevented table
+     * names conflicts) to the first argument of the callback.
+     *
+     * @param string|ModelInterface $modelClass The model class name
+     * @param \Closure $callback
+     * @return Query
+     * @throws NotModelException
+     */
+    public function resolveModelSubQueryClosure(string $modelClass, \Closure $callback): OriginalQuery
+    {
+        NotModelException::checkModelClass('The given model class', $modelClass);
+
+        $queryTableName = $this->baseQuery->getTableIdentifier();
+        $subQueryTable = $modelClass::getTable();
+        $subQueryTableAlias = null;
+
+        if ($subQueryTable === $queryTableName) {
+            $counter = 0;
+            do {
+                $subQueryTableAlias = '__wired_reserved_alias_'.$counter++;
+            } while ($subQueryTableAlias === $queryTableName);
+        }
+
+        return $this->resolveSubQueryClosure(function (
+            self $subQuery
+        ) use (
+            $modelClass,
+            $subQueryTable,
+            $subQueryTableAlias,
+            $callback
+        ) {
+            $subQuery->modelClass = $modelClass;
+            $subQuery->table($subQueryTable, $subQueryTableAlias);
+            return $callback($subQuery);
+        });
     }
 
     /**
