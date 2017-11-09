@@ -108,7 +108,7 @@ class User extends Model
 Get a model by identifier:
 
 ```php
-$user = $orm->model(User::class)->find(15); // A User instance of null
+$user = $orm->model(User::class)->find(15); // A User instance or null
 ```
 
 Get an array of models by identifiers:
@@ -168,9 +168,9 @@ $paginator = new Pagerfanta(new PagerfantaAdapter($query));
 $paginator->setMaxPerPage(10); // The number of models on a page
 $paginator->setCurrentPage(3); // The current page number
 
-$currentPageRows = $paginator->getCurrentPageResults(); // The models for the current page
-$pagesCount = $paginator->getNbPages();                 // Total pages count
-$haveToPaginate = $paginator->haveToPaginate();         // Whether the number of models is higher than the max per page
+$currentPageModels = $paginator->getCurrentPageResults(); // The models for the current page
+$pagesCount = $paginator->getNbPages();                   // Total pages count
+$haveToPaginate = $paginator->haveToPaginate();           // Whether the number of models is higher than the max per page
 ```
 
 You can find more reference and examples for Pagerfanta [there](https://github.com/whiteoctober/Pagerfanta#usage).
@@ -254,7 +254,6 @@ Add a method to a model class to tell the ORM that a model instance has many rel
 use Finesse\Wired\Model;
 use Finesse\Wired\Relations\HasMany;
 
-
 class User extends Model
 {
     public $id;
@@ -284,8 +283,7 @@ Add a method to a model class to tell the ORM that a model instance belongs to o
 
 ```php
 use Finesse\Wired\Model;
-use Finesse\Wired\Relations\HasMany;
-
+use Finesse\Wired\Relations\BelongsTo;
 
 class Post extends Model
 {
@@ -310,7 +308,7 @@ If you need the `user_id` field to point to another `User` field, pass it's name
 return new BelongsTo(User::class, 'user_email', 'email');
 ```
 
-#### Getting models filtered by relations
+#### Getting models filtered by relation
 
 Get all models having at least one related instance:
 
@@ -342,14 +340,14 @@ $usersWithOldPosts = $orm
     ->get();
 ```
 
-You can even filter by a complex relation chain:
+You can even filter using a complex relation chain:
 
 ```php
-// All users having a post which category name is News
-$newsWriters = $orm
+// All users having a post belonging to a category named "News" or "Events" (BTW, this is an example of many-to-many relation)
+$reporters = $orm
     ->model(User::class)
     ->whereRelation('posts.category', function ($query) { // Relations are divided by dot
-        $query->where('name', 'News');
+        $query->where('name', 'News')->orWhere('name', 'Events');
     })
     ->get();
 ```

@@ -16,7 +16,7 @@ class NotModelException extends ModelException
      *
      * @param string $name Value name
      * @param string $className Class name
-     * @throws static If the class is not a model
+     * @throws self If the class is not a model
      */
     public static function checkModelClass(string $name, string $className)
     {

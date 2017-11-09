@@ -199,6 +199,7 @@ class ModelQueryTest extends TestCase
     {
         $mapper = $this->makeMockDatabase();
 
+        // Companion methods
         $this->assertEquals(2, $mapper
             ->model(Post::class)
             ->whereNoRelation('author')
@@ -215,6 +216,20 @@ class ModelQueryTest extends TestCase
             ->where('created_at', '<=', mktime(0, 0, 0, 11, 2, 2017))
             ->orWhereNoRelation('author')
             ->count());
+
+        // Nested relations criteria
+        $users = $mapper
+            ->model(User::class)
+            ->whereRelation('posts', function (ModelQuery $query) {
+                $query->whereRelation('category', function (ModelQuery $query) {
+                    $query->where('title', 'Hockey')->orWhere('id', 3);
+                });
+            })
+            ->orderBy('id')
+            ->get();
+        $this->assertCount(2, $users);
+        $this->assertEquals('Frank', $users[0]->name);
+        $this->assertEquals('Quentin', $users[1]->name);
 
         // Relations chain criterion
         $users = $mapper
