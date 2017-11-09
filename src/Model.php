@@ -22,6 +22,15 @@ abstract class Model implements ModelInterface
 
     /**
      * {@inheritDoc}
+     * Returns true if has loaded relations with the given name.
+     */
+    public function __isset($name)
+    {
+        return $this->doesHaveLoadedRelatives($name);
+    }
+
+    /**
+     * {@inheritDoc}
      * Returns loaded relations if has.
      *
      * @return ModelInterface[]|ModelInterface|null

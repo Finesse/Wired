@@ -5,6 +5,8 @@ namespace Finesse\Wired\Relations;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
+use Finesse\Wired\Helpers;
+use Finesse\Wired\Mapper;
 use Finesse\Wired\ModelInterface;
 use Finesse\Wired\ModelQuery;
 use Finesse\Wired\RelationInterface;
@@ -14,10 +16,10 @@ use Finesse\Wired\RelationInterface;
  *
  * @author Surgie
  */
-abstract class CompareColumns implements RelationInterface
+abstract class CompareFields implements RelationInterface
 {
     /**
-     * @var string|null The current (from a query) model field name
+     * @var string|null The current model field name
      */
     protected $currentModelField;
 
@@ -38,47 +40,103 @@ abstract class CompareColumns implements RelationInterface
     protected $targetModelField;
 
     /**
-     * @param string|null $currentModelField The current (from a query) model field name. If null, the current model
-     *     identifier will be used.
+     * @var bool
+     */
+    protected $expectsManyTargetModels;
+
+    /**
+     * @param string|null $currentModelField The current model field name. If null, the current model identifier will be
+     *     used.
      * @param string $compareRule Columns compare rule (for the query whereColumn method)
      * @param string $targetModelClass The target model class name
      * @param string|null $targetModelField The target model field name. If null, the target model identifier will be
      *     used.
+     * @param bool $expectsManyTargetModels Does the current model has 0-many target models (true) or 0-1 (false)?
      * @throws NotModelException
      */
     public function __construct(
         string $currentModelField = null,
         string $compareRule = '',
         string $targetModelClass,
-        string $targetModelField = null
+        string $targetModelField = null,
+        bool $expectsManyTargetModels
     ) {
-        NotModelException::checkModelClass('The target model class name', $targetModelClass);
+        Helpers::checkModelClass('The target model class name', $targetModelClass);
 
         $this->currentModelField = $currentModelField;
         $this->compareRule = $compareRule;
         $this->targetModelClass = $targetModelClass;
         $this->targetModelField = $targetModelField;
+        $this->expectsManyTargetModels = $expectsManyTargetModels;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function applyToQueryWhere(ModelQuery $query, $target)
+    public function applyToQueryWhere(ModelQuery $query, $constraint)
     {
-        if ($target instanceof ModelInterface) {
-            return $this->applyToQueryWhereWithModel($query, $target);
+        if ($constraint instanceof ModelInterface) {
+            return $this->applyToQueryWhereWithModel($query, $constraint);
         }
 
-        if ($target === null || $target instanceof \Closure) {
-            return $this->applyToQueryWhereWithClause($query, $target);
+        if ($constraint === null || $constraint instanceof \Closure) {
+            return $this->applyToQueryWhereWithClause($query, $constraint);
         }
 
         throw new InvalidArgumentException(sprintf(
-            'The relation argument expected to be %s, %s or null, %s given',
+            'The constraint argument expected to be %s, %s or null, %s given',
             ModelInterface::class,
             \Closure::class,
-            is_object($target) ? get_class($target) : gettype($target)
+            is_object($constraint) ? get_class($constraint) : gettype($constraint)
         ));
+    }
+
+    /**
+     * {@inheritDoc}
+     * @todo Test
+     */
+    public function loadRelatives(Mapper $mapper, string $name, array $models, \Closure $constraint = null)
+    {
+        /** @var ModelInterface[] $models (stupid IDE) */
+        if (empty($models)) {
+            return;
+        }
+
+        $sampleModel = reset($models);
+        $currentModelField = $this->getCurrentModelField(get_class($sampleModel));
+        $targetModelField = $this->getTargetModelField();
+
+        // Collecting the list of unique target model column values
+        $searchValues = [];
+        foreach ($models as $model) {
+            $searchValues[$model->$currentModelField] = true;
+        }
+        $searchValues = array_keys($searchValues);
+
+        // Getting related model instances
+        $query = $mapper->model($this->targetModelClass);
+        if ($constraint) {
+            $query = $constraint($query) ?? $query;
+        }
+        // whereIn is applied after to make sure that the relation closure is applied with the AND rule
+        $relatives = $query
+            ->whereIn($this->getTargetModelField(), $searchValues)
+            ->get();
+
+        // Setting the relative models to the input models
+        if ($this->expectsManyTargetModels) {
+            $groupedRelatives = Helpers::groupObjectsByProperty($relatives, $targetModelField);
+
+            foreach ($models as $model) {
+                $model->setLoadedRelatives($name, $groupedRelatives[$model->$currentModelField] ?? []);
+            }
+        } else {
+            $relatives = Helpers::indexObjectsByProperty($relatives, $targetModelField);
+
+            foreach ($models as $model) {
+                $model->setLoadedRelatives($name, $relatives[$model->$currentModelField] ?? null);
+            }
+        }
     }
 
     /**
@@ -100,7 +158,7 @@ abstract class CompareColumns implements RelationInterface
         }
 
         $query->where(
-            $this->getCurrentModelField($query),
+            $this->getCurrentModelField($query->modelClass),
             $this->compareRule,
             $model->{$this->getTargetModelField()}
         );
@@ -119,7 +177,7 @@ abstract class CompareColumns implements RelationInterface
         // whereColumn is applied after to make sure that the relation closure is applied with the AND rule
         $subQuery = $query->resolveModelSubQueryClosure($this->targetModelClass, $clause ?? function () {});
         $subQuery->whereColumn(
-            $query->getTableIdentifier().'.'.$this->getCurrentModelField($query),
+            $query->getTableIdentifier().'.'.$this->getCurrentModelField($query->modelClass),
             $this->compareRule,
             $subQuery->getTableIdentifier().'.'.$this->getTargetModelField()
         );
@@ -130,12 +188,12 @@ abstract class CompareColumns implements RelationInterface
     /**
      * Gets the current model field name.
      *
-     * @param ModelQuery $query A query with the current model
+     * @param string|ModelInterface $currentModelClass Current model class name
      * @return string
      */
-    protected function getCurrentModelField(ModelQuery $query): string
+    protected function getCurrentModelField(string $currentModelClass): string
     {
-        return $this->currentModelField ?? $query->modelClass::getIdentifierField();
+        return $this->currentModelField ?? $currentModelClass::getIdentifierField();
     }
 
     /**

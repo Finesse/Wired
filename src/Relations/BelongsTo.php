@@ -10,7 +10,7 @@ use Finesse\Wired\ModelInterface;
  *
  * @author Surgie
  */
-class BelongsTo extends CompareColumns
+class BelongsTo extends CompareFields
 {
     /**
      * @param string|ModelInterface $modelClass The object model class name
@@ -21,6 +21,6 @@ class BelongsTo extends CompareColumns
      */
     public function __construct(string $modelClass, string $foreignField, string $identifierField = null)
     {
-        parent::__construct($foreignField, '=', $modelClass, $identifierField);
+        parent::__construct($foreignField, '=', $modelClass, $identifierField, false);
     }
 }

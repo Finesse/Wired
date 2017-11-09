@@ -8,6 +8,9 @@ use Finesse\Wired\Relations\BelongsTo;
 /**
  * Post
  *
+ * @property-read User|null $author Post author (if loaded)
+ * @property-read Category|null $category Post category (if loaded)
+ *
  * @author Surgie
  */
 class Post extends Model

@@ -8,6 +8,7 @@ use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentExcep
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\NotModelException;
+use Finesse\Wired\Exceptions\RelationException;
 
 /**
  * Mapper. Retrieves and saves models.
@@ -59,7 +60,7 @@ class Mapper
      */
     public function model(string $className): ModelQuery
     {
-        NotModelException::checkModelClass('The given model class', $className);
+        Helpers::checkModelClass('The given model class', $className);
 
         /** @var ModelInterface $className */
         $query = $this->database->table($className::getTable());
@@ -97,20 +98,20 @@ class Mapper
             $models = [$models];
         }
 
-        // Group models by class
-        /** @var ModelInterface[][] $groups */
-        $groups = [];
-        foreach ($models as $index => $model) {
-            if (!($model instanceof ModelInterface)) {
-                throw new NotModelException('Argument $models['.$index.'] is not a model');
-            }
+        // Delete all models of a class in a single query
+        foreach (Helpers::groupModelsByClass($models) as $sameClassModels) {
+            $this->deleteModelsOfSameClass($sameClassModels);
+        }
+    }
 
-            $groups[get_class($model)][] = $model;
+    public function load($models, string $relationName, \Closure $clause = null)
+    {
+        if (!is_array($models)) {
+            $models = [$models];
         }
 
-        // Delete all models in a group in a single query
-        foreach ($groups as $class => $models) {
-            $this->deleteModelsOfSameClass($models);
+        foreach (Helpers::groupModelsByClass($models) as $sameClassModels) {
+            $this->loadWithModelsOfSameClass($sameClassModels, $relationName, $clause);
         }
     }
 
@@ -184,5 +185,29 @@ class Mapper
         } catch (DBInvalidArgumentException $exception) {
             throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
         }
+    }
+
+    /**
+     * Loads relative models of the given models to the given models. The given models must have the same class.
+     *
+     * @param ModelInterface[] $models Not empty array of models
+     * @param string $relationName The relation name from which the relative models should be loaded
+     * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
+     *     the closure". Null means "no constraint".
+     */
+    protected function loadWithModelsOfSameClass(array $models, string $relationName, \Closure $clause = null)
+    {
+        $sampleModel = reset($models);
+
+        $relation = $sampleModel::getRelation($relationName);
+        if ($relation === null) {
+            throw new RelationException(sprintf(
+                'The relation `%s` is not defined in the %s model',
+                $relationName,
+                get_class($sampleModel)
+            ));
+        }
+
+        $relation->loadRelatives($this, $relationName, $models, $clause);
     }
 }

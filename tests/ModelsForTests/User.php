@@ -8,6 +8,8 @@ use Finesse\Wired\Relations\HasMany;
 /**
  * User
  *
+ * @property-read Post[] $posts User posts (if loaded)
+ *
  * @author Surgie
  */
 class User extends Model

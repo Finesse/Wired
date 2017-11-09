@@ -71,7 +71,7 @@ class HasManyTest extends TestCase
         $this->assertException(InvalidArgumentException::class, function () use ($mapper) {
             $mapper->model(User::class)->whereRelation('posts', 'foo');
         }, function (InvalidArgumentException $exception) {
-            $this->assertStringStartsWith('The relation argument expected to be ', $exception->getMessage());
+            $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
         });
     }
 }

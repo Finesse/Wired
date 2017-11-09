@@ -9,6 +9,10 @@ use Finesse\Wired\Relations\HasMany;
 /**
  * Category
  *
+ * @property-read Category|null $parent Parent category (if loaded)
+ * @property-read Category[] $children Child categories (if loaded)
+ * @property-read Post[] $posts Category posts (if loaded)
+ *
  * @author Surgie
  */
 class Category extends Model

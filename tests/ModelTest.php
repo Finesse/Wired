@@ -105,16 +105,20 @@ class ModelTest extends TestCase
     }
 
     /**
-     * Tests the `__get` magic method
+     * Tests the `__get` and `__isset` magic method
      */
     public function testGet()
     {
         $model = new User();
-        $this->assertNull($model->name);
+        $model->name = 'Foobarer';
+        $this->assertTrue(isset($model->name));
+        $this->assertEquals('Foobarer', $model->name);
 
         $model->setLoadedRelatives('posts', [new Post()]);
+        $this->assertTrue(isset($model->posts));
         $this->assertCount(1, $model->posts);
 
+        $this->assertFalse(isset($model->subscriptions));
         $this->assertException(\Error::class, function () use ($model) {
             $model->subscriptions;
         }, function (\Error $exception) {

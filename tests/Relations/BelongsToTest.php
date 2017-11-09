@@ -72,7 +72,7 @@ class BelongsToTest extends TestCase
         $this->assertException(InvalidArgumentException::class, function () use ($mapper) {
             $mapper->model(Post::class)->whereRelation('author', 'Jack');
         }, function (InvalidArgumentException $exception) {
-            $this->assertStringStartsWith('The relation argument expected to be ', $exception->getMessage());
+            $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
         });
     }
 }

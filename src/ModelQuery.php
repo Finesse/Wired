@@ -184,7 +184,7 @@ class ModelQuery extends QueryProxy
      */
     public function resolveModelSubQueryClosure(string $modelClass, \Closure $callback): OriginalQuery
     {
-        NotModelException::checkModelClass('The given model class', $modelClass);
+        Helpers::checkModelClass('The given model class', $modelClass);
 
         $queryTableName = $this->baseQuery->getTableIdentifier();
         $subQueryTable = $modelClass::getTable();
