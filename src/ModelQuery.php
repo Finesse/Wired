@@ -100,16 +100,16 @@ class ModelQuery extends QueryProxy
             throw new IncorrectQueryException('This query is not a model query');
         }
 
-        // Resolve the chained relation
+        // Resolve the chained relations
         $relationsChain = explode('.', $relationName, 2);
         if (count($relationsChain) > 1) {
             $relationName = $relationsChain[0];
-            $target = function (self $query) use ($target, $relationsChain) {
+            $target = function (self $query) use ($relationsChain, $target) {
                 $query->whereRelation($relationsChain[1], $target);
             };
         }
 
-        // Get a relation object
+        // Get the relation object
         $relation = $this->modelClass::getRelation($relationName);
         if ($relation === null) {
             throw new RelationException(sprintf(

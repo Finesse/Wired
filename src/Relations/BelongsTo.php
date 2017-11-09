@@ -89,7 +89,7 @@ class BelongsTo implements RelationInterface
 
         $query->where(
             $this->foreignField,
-            $model->{$this->identifierField ?? $this->modelClass::getIdentifierField()}
+            $model->{$this->identifierField ?? $model::getIdentifierField()}
         );
     }
 
@@ -101,13 +101,11 @@ class BelongsTo implements RelationInterface
      */
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
-        $identifierField = $this->identifierField ?? $this->modelClass::getIdentifierField();
-
         // whereColumn is applied after to make sure that the relation closure is applied the the AND rule
         $subQuery = $query->resolveModelSubQueryClosure($this->modelClass, $clause ?? function () {});
         $subQuery->whereColumn(
             $query->getTableIdentifier().'.'.$this->foreignField,
-            $subQuery->getTableIdentifier().'.'.$identifierField
+            $subQuery->getTableIdentifier().'.'.($this->identifierField ?? $this->modelClass::getIdentifierField())
         );
 
         $query->whereExists($subQuery);

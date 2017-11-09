@@ -3,7 +3,9 @@
 namespace Finesse\Wired;
 
 /**
- * Model. The class represents a database table. An instance represents a table row.
+ * {@inheritDoc}
+ *
+ * A basic model interface implementation.
  *
  * All the model fields must be presented in a model class as public variables.
  *

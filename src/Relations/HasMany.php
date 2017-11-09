@@ -100,12 +100,10 @@ class HasMany implements RelationInterface
      */
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
-        $identifierField = $this->identifierField ?? $query->modelClass::getIdentifierField();
-
         // whereColumn is applied after to make sure that the relation closure is applied the the AND rule
         $subQuery = $query->resolveModelSubQueryClosure($this->modelClass, $clause ?? function () {});
         $subQuery->whereColumn(
-            $query->getTableIdentifier().'.'.$identifierField,
+            $query->getTableIdentifier().'.'.($this->identifierField ?? $query->modelClass::getIdentifierField()),
             $subQuery->getTableIdentifier().'.'.$this->foreignField
         );
 

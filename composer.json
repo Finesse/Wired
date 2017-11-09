@@ -13,7 +13,7 @@
 	],
 	"require": {
 		"php": ">=7.0",
-		"finesse/mini-db": "^0.2.1"
+		"finesse/mini-db": "^0.3.0"
 	},
 	"require-dev": {
 		"ext-pdo_sqlite": "*",

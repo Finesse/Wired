@@ -244,6 +244,118 @@ $orm
     ->delete();
 ```
 
+### Model relations
+
+#### One to many
+
+Add a method to a model class to tell the ORM that a model instance has many related instances of one type:
+
+```php
+use Finesse\Wired\Model;
+use Finesse\Wired\Relations\HasMany;
+
+
+class User extends Model
+{
+    public $id;
+    // ...
+
+    public static function posts()
+    {
+        return new HasMany(Post::class, 'user_id');
+    }
+
+    // ...
+}
+```
+
+The `posts` method name is the relation name. You can set any name. The relation above tells that the `Post` model has 
+the `user_id` field which contains a user instance identifier.
+
+If you need the `user_id` field to point to another `User` field, pass it's name to the third `HasMany` argument:
+
+```php
+return new HasMany(Post::class, 'user_email', 'email');
+``` 
+
+#### One to many (inverted)
+
+Add a method to a model class to tell the ORM that a model instance belongs to one related instance:
+
+```php
+use Finesse\Wired\Model;
+use Finesse\Wired\Relations\HasMany;
+
+
+class Post extends Model
+{
+    public $user_id;
+    // ...
+
+    public static function author()
+    {
+        return new BelongsTo(User::class, 'user_id');
+    }
+
+    // ...
+}
+```
+
+The `author` method name is the relation name. You can set any name. The relation above tells that the `Post` model has 
+the `user_id` field which contains an author instance identifier.
+
+If you need the `user_id` field to point to another `User` field, pass it's name to the third `BelongsTo` argument:
+
+```php
+return new BelongsTo(User::class, 'user_email', 'email');
+```
+
+#### Getting models filtered by relations
+
+Get all models having at least one related instance:
+
+```php
+$usersWithPosts = $orm
+    ->model(User::class)
+    ->whereRelation('posts') // The relation name specified in the User model class
+    ->get();
+```
+
+Get all models related with a model instance:
+
+```php
+$user = $orm->model(User::class)->find(12);
+$userPosts = $orm
+    ->model(Post::class)
+    ->whereRelation('author', $user)
+    ->get();
+```
+
+Get all models having at least one related instance which fits a clause:
+
+```php
+$usersWithOldPosts = $orm
+    ->model(User::class)
+    ->whereRelation('posts', function ($query) {
+        $query->where('date', '<', '2015-01-01');
+    })
+    ->get();
+```
+
+You can even filter by a complex relation chain:
+
+```php
+// All users having a post which category name is News
+$newsWriters = $orm
+    ->model(User::class)
+    ->whereRelation('posts.category', function ($query) { // Relations are divided by dot
+        $query->where('name', 'News');
+    })
+    ->get();
+```
+
+You can also use the `orWhereRelation`, `whereNoRelation` and `orWhereNoRelation` methods.
+
 
 ## Versions compatibility
 
