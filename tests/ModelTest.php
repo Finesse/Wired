@@ -5,6 +5,7 @@ namespace Finesse\Wired\Tests;
 use Finesse\Wired\Model;
 use Finesse\Wired\RelationInterface;
 use Finesse\Wired\Relations\BelongsTo;
+use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
 
 /**
@@ -83,5 +84,41 @@ class ModelTest extends TestCase
         $this->assertInstanceOf(RelationInterface::class, $model::getRelation('parent'));
         $this->assertNull($model::getRelation('notARelation'));
         $this->assertNull($model::getRelation('foo'));
+    }
+
+    /**
+     * Tests the relatives methods
+     */
+    public function testLoadedRelatives()
+    {
+        $model = new User();
+        $this->assertFalse($model->doesHaveLoadedRelatives('post'));
+        $this->assertNull($model->getLoadedRelatives('post'));
+
+        $model->setLoadedRelatives('post', new Post());
+        $this->assertTrue($model->doesHaveLoadedRelatives('post'));
+        $this->assertInstanceOf(Post::class, $model->getLoadedRelatives('post'));
+
+        $model->setLoadedRelatives('post', null);
+        $this->assertTrue($model->doesHaveLoadedRelatives('post'));
+        $this->assertNull($model->getLoadedRelatives('post'));
+    }
+
+    /**
+     * Tests the `__get` magic method
+     */
+    public function testGet()
+    {
+        $model = new User();
+        $this->assertNull($model->name);
+
+        $model->setLoadedRelatives('posts', [new Post()]);
+        $this->assertCount(1, $model->posts);
+
+        $this->assertException(\Error::class, function () use ($model) {
+            $model->subscriptions;
+        }, function (\Error $exception) {
+            $this->assertEquals('Undefined property: '.User::class.'::$subscriptions', $exception->getMessage());
+        });
     }
 }

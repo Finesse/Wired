@@ -186,6 +186,11 @@ class MapperTest extends TestCase
         $this->assertNull($mapper->model(User::class)->find(16));
         $this->assertNull($mapper->model(Post::class)->find(5));
 
+        // No models
+        $mapper->delete([]);
+        $this->assertEquals(21, $mapper->model(User::class)->count());
+        $this->assertEquals(16, $mapper->model(Post::class)->count());
+
         // Not a model error
         $this->assertException(NotModelException::class, function () use ($mapper) {
             $mapper->delete('user');

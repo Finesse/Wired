@@ -28,7 +28,7 @@ abstract class CompareColumns implements RelationInterface
     protected $compareRule;
 
     /**
-     * @var string|ModelInterface The target model class name
+     * @var string|ModelInterface The target model class name (checked)
      */
     protected $targetModelClass;
 

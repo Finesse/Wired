@@ -110,28 +110,7 @@ class Mapper
 
         // Delete all models in a group in a single query
         foreach ($groups as $class => $models) {
-            /** @var ModelInterface $class */
-            $identifierField = $class::getIdentifierField();
-            $ids = [];
-
-            foreach ($models as $model) {
-                if ($model->doesExistInDatabase()) {
-                    $ids[] = $model->$identifierField;
-                    $model->$identifierField = null;
-                }
-            }
-
-            if (empty($ids)) {
-                continue;
-            }
-
-            try {
-                $this->database->table($class::getTable())->whereIn($identifierField, $ids)->delete();
-            } catch (DBDatabaseException $exception) {
-                throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
-            } catch (DBInvalidArgumentException $exception) {
-                throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
-            }
+            $this->deleteModelsOfSameClass($models);
         }
     }
 
@@ -167,6 +146,39 @@ class Mapper
                     ->table($model::getTable())
                     ->insertGetId($row, $model->$identifierField);
             }
+        } catch (DBDatabaseException $exception) {
+            throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
+        } catch (DBInvalidArgumentException $exception) {
+            throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
+        }
+    }
+
+    /**
+     * Deletes models of the same class from the database.
+     *
+     * @param ModelInterface[] $models Not empty array of models
+     * @throws DatabaseException
+     * @throws IncorrectModelException
+     */
+    protected function deleteModelsOfSameClass(array $models)
+    {
+        $sampleModel = reset($models);
+        $identifierField = $sampleModel::getIdentifierField();
+        $ids = [];
+
+        foreach ($models as $model) {
+            if ($model->doesExistInDatabase()) {
+                $ids[] = $model->$identifierField;
+                $model->$identifierField = null;
+            }
+        }
+
+        if (empty($ids)) {
+            return;
+        }
+
+        try {
+            $this->database->table($sampleModel::getTable())->whereIn($identifierField, $ids)->delete();
         } catch (DBDatabaseException $exception) {
             throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
         } catch (DBInvalidArgumentException $exception) {
