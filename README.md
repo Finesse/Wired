@@ -101,6 +101,10 @@ class User extends Model
 }
 ```
 
+All the table fields must be specified as the public properties of the class. All the public properties must be a table
+column name.
+
+
 ## Usage
 
 ### Retrieving models
@@ -206,6 +210,8 @@ $orm->save($user);
 echo 'Your ID is '.$user->id;
 ```
 
+Warning! The `save` method doesn't save related models, you need to do it manually.
+
 Change an existing model:
 
 ```php
@@ -227,6 +233,8 @@ Delete a model object from the database:
 ```php
 $orm->delete($user);
 ```
+
+Warning! The `delete` method doesn't delete related models, you need to do it manually.
 
 Delete many model objects at once:
 
@@ -306,6 +314,62 @@ If you need the `user_id` field to point to another `User` field, pass it's name
 
 ```php
 return new BelongsTo(User::class, 'user_email', 'email');
+```
+
+#### Getting related models
+
+Load all related models:
+
+```php
+$user = $orm->model(User::class)->find(14);
+$orm->load($user, 'posts');
+$posts = $user->posts;
+```
+
+The `'posts'` value is the relation name defined in the `User` model class. The `posts` property is added automatically
+to a `User` object, you don't need to specify it in the model class.
+
+Eager load related models for many models:
+
+```php
+$users = $orm->model(User::class)->get();
+$orm->load($users, 'posts');
+
+foreach ($users as $user) {
+    foreach ($user->posts as $post) {
+        // ...
+    }
+}
+```
+
+All the related models are loaded using a single SQL query like this `SELECT * FROM posts WHERE id IN (1, 2, 3, 4)`.
+
+Load related models with a constraint or an order:
+
+```php
+$orm->load($users, 'posts', function ($query) {
+    $query
+        ->where('date', '<', '2015-01-01')
+        ->orderBy('date', 'desc');
+});
+```
+
+Load relative models only for the models that don't have loaded relatives:
+
+```php
+$orm->load($posts, 'author', null, true);
+// ...
+$orm->load($posts, 'author', null, true); // Doesn't load the second time 
+```
+
+Load relative models with relative submodels:
+
+```php
+$orm->load($post, 'author.posts.category');
+
+foreach ($post->author->post as $sameAuthorPost) {
+    $category = $sameAuthorPost->category;
+}
 ```
 
 #### Getting models filtered by relation

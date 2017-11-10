@@ -106,4 +106,22 @@ class HelpersTest extends TestCase
         $this->assertCount(1, $groups['Ivan']);
         $this->assertEquals(4, $groups['Ivan'][0]->id);
     }
+
+    /**
+     * Tests the `collectModelsRelatives` method
+     */
+    public function testCollectModelsRelatives()
+    {
+        $user1 = new User();
+        $user2 = new User();
+        $user2->setLoadedRelatives('posts', new Post());
+        $user3 = new User();
+        $user3->setLoadedRelatives('posts', [new Post(), new Post()]);
+
+        $posts = Helpers::collectModelsRelatives([$user1, $user2, $user3], 'posts');
+        $this->assertCount(3, $posts);
+        foreach ($posts as $post) {
+            $this->assertInstanceOf(Post::class, $post);
+        }
+    }
 }

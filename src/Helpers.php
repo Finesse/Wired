@@ -87,4 +87,30 @@ class Helpers
 
         return $groups;
     }
+
+    /**
+     * Collects models related models to a plain array.
+     *
+     * @param ModelInterface[] $models The models
+     * @param string $relation Relation name from which the relative models should be taken
+     * @return ModelInterface[]
+     */
+    public static function collectModelsRelatives(array $models, string $relation): array
+    {
+        $result = [];
+
+        foreach ($models as $model) {
+            $relatives = $model->getLoadedRelatives($relation);
+
+            if (is_array($relatives)) {
+                foreach ($relatives as $relative) {
+                    $result[] = $relative;
+                }
+            } elseif ($relatives instanceof ModelInterface) {
+                $result[] = $relatives;
+            }
+        }
+
+        return $result;
+    }
 }

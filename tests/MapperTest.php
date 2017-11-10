@@ -248,6 +248,13 @@ class MapperTest extends TestCase
             $this->assertTrue(isset($post->category));
         }
 
+        // Chained relation
+        $user = $mapper->model(User::class)->find(11);
+        $mapper->load($user, 'posts.category');
+        $this->assertCount(2, $user->posts);
+        $this->assertEquals('Football', $user->posts[0]->category->title);
+        $this->assertEquals('Lifehacks', $user->posts[1]->category->title);
+
         // Undefined relation
         $this->assertException(RelationException::class, function () use ($mapper, $posts) {
             $mapper->load($posts, 'fubar');

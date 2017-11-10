@@ -13,10 +13,6 @@ use Finesse\Wired\Exceptions\RelationException;
 /**
  * Mapper. Retrieves and saves models.
  *
- * Relations features:
- *  * todo: Eager loading related models
- *  * todo: Associate a related model with a model
- *
  * @author Surgie
  */
 class Mapper
@@ -108,7 +104,8 @@ class Mapper
      * Loads relative models of the given models and puts the loaded models to the given models.
      *
      * @param ModelInterface|ModelInterface[] $models A model or an array of models
-     * @param string $relationName The relation name from which the relative models should be loaded
+     * @param string $relationName The relation name from which the relative models should be loaded. If you need to
+     *     load a subrelations too, add dot and threirs name to the relation name.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
      * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
@@ -203,7 +200,8 @@ class Mapper
      * Loads relative models of the given models and puts the loaded models to the given models.
      *
      * @param ModelInterface[] $models Not empty array of models. The models must have the same class.
-     * @param string $relationName The relation name from which the relative models should be loaded
+     * @param string $relationName The relation name from which the relative models should be loaded. If you need to
+     *     load a subrelations too, add dot and threirs name to the relation name.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
      * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
@@ -217,17 +215,33 @@ class Mapper
         \Closure $clause = null,
         bool $onlyMissing = false
     ) {
-        $sampleModel = reset($models);
+        $relationsChain = explode('.', $relationName, 2);
 
-        $relation = $sampleModel::getRelation($relationName);
-        if ($relation === null) {
-            throw new RelationException(sprintf(
-                'The relation `%s` is not defined in the %s model',
+        for ($i = 0, $l = count($relationsChain); $i < $l; ++$i) {
+            $relationName = $relationsChain[$i];
+            $isLastRelation = $i === $l - 1;
+            $sampleModel = reset($models);
+
+            $relation = $sampleModel::getRelation($relationName);
+            if ($relation === null) {
+                throw new RelationException(sprintf(
+                    'The relation `%s` is not defined in the %s model',
+                    $relationName,
+                    get_class($sampleModel)
+                ));
+            }
+
+            $relation->loadRelatives(
+                $this,
                 $relationName,
-                get_class($sampleModel)
-            ));
-        }
+                $models,
+                $isLastRelation ? $clause : null,
+                $isLastRelation ? $onlyMissing : true
+            );
 
-        $relation->loadRelatives($this, $relationName, $models, $clause, $onlyMissing);
+            if (!$isLastRelation) {
+                $models = Helpers::collectModelsRelatives($models, $relationName);
+            }
+        }
     }
 }
