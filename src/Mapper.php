@@ -104,14 +104,26 @@ class Mapper
         }
     }
 
-    public function load($models, string $relationName, \Closure $clause = null)
+    /**
+     * Loads relative models of the given models and puts the loaded models to the given models.
+     *
+     * @param ModelInterface|ModelInterface[] $models A model or an array of models
+     * @param string $relationName The relation name from which the relative models should be loaded
+     * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
+     *     the closure". Null means "no constraint".
+     * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
+     * @throws RelationException
+     * @throws DatabaseException
+     * @throws IncorrectModelException
+     */
+    public function load($models, string $relationName, \Closure $clause = null, bool $onlyMissing = false)
     {
         if (!is_array($models)) {
             $models = [$models];
         }
 
         foreach (Helpers::groupModelsByClass($models) as $sameClassModels) {
-            $this->loadWithModelsOfSameClass($sameClassModels, $relationName, $clause);
+            $this->loadWithModelsOfSameClass($sameClassModels, $relationName, $clause, $onlyMissing);
         }
     }
 
@@ -188,15 +200,23 @@ class Mapper
     }
 
     /**
-     * Loads relative models of the given models to the given models. The given models must have the same class.
+     * Loads relative models of the given models and puts the loaded models to the given models.
      *
-     * @param ModelInterface[] $models Not empty array of models
+     * @param ModelInterface[] $models Not empty array of models. The models must have the same class.
      * @param string $relationName The relation name from which the relative models should be loaded
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
+     * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
+     * @throws RelationException
+     * @throws DatabaseException
+     * @throws IncorrectModelException
      */
-    protected function loadWithModelsOfSameClass(array $models, string $relationName, \Closure $clause = null)
-    {
+    protected function loadWithModelsOfSameClass(
+        array $models,
+        string $relationName,
+        \Closure $clause = null,
+        bool $onlyMissing = false
+    ) {
         $sampleModel = reset($models);
 
         $relation = $sampleModel::getRelation($relationName);
@@ -208,6 +228,6 @@ class Mapper
             ));
         }
 
-        $relation->loadRelatives($this, $relationName, $models, $clause);
+        $relation->loadRelatives($this, $relationName, $models, $clause, $onlyMissing);
     }
 }

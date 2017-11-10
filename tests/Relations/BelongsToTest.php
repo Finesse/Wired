@@ -2,6 +2,7 @@
 
 namespace Finesse\Wired\Tests\Relations;
 
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
@@ -73,6 +74,65 @@ class BelongsToTest extends TestCase
             $mapper->model(Post::class)->whereRelation('author', 'Jack');
         }, function (InvalidArgumentException $exception) {
             $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
+        });
+    }
+
+    /**
+     * Tests the `loadRelatives` method
+     */
+    public function testLoadRelatives()
+    {
+        $mapper = $this->makeMockDatabase();
+        $relation = Post::author();
+
+        $posts = $mapper->model(Post::class)->find([1, 5, 7, 11]);
+        $relation->loadRelatives($mapper, 'author', $posts);
+        foreach ($posts as $post) {
+            $this->assertTrue(isset($post->author));
+        }
+        $this->assertEquals('Frank', $posts[0]->author->name);
+        $this->assertEquals('Frank', $posts[1]->author->name);
+        $this->assertEquals('Anny', $posts[2]->author->name);
+        $this->assertNull($posts[3]->author);
+
+        // With constraint
+        $posts = $mapper->model(Post::class)->find([1, 5, 7, 11]);
+        $relation->loadRelatives($mapper, 'author', $posts, function (ModelQuery $query) {
+            $query->where('name', '<', 'F');
+        });
+        foreach ($posts as $post) {
+            $this->assertTrue(isset($post->author));
+        }
+        $this->assertNull($posts[0]->author);
+        $this->assertNull($posts[1]->author);
+        $this->assertEquals('Anny', $posts[2]->author->name);
+        $this->assertNull($posts[3]->author);
+
+        // Skip models with loaded relatives
+        $relation->loadRelatives($mapper, 'author', $posts, null, true);
+        foreach ($posts as $post) {
+            $this->assertTrue(isset($post->author));
+        }
+        $this->assertNull($posts[0]->author);
+        $this->assertNull($posts[1]->author);
+        $this->assertEquals('Anny', $posts[2]->author->name);
+        $this->assertNull($posts[3]->author);
+
+        // Models with null key value
+        $post = new Post();
+        $relation->loadRelatives($mapper, 'author', [$post]);
+        $this->assertNull($post->author);
+
+        // Incorrect key field value
+        $post = new Post();
+        $post->author_id = [1, 2];
+        $this->assertException(IncorrectModelException::class, function () use ($relation, $mapper, $post) {
+            $relation->loadRelatives($mapper, 'author', [$post]);
+        }, function (IncorrectModelException $exception) {
+            $this->assertEquals(
+                'The model `author_id` field value expected to be scalar or null, array given',
+                $exception->getMessage()
+            );
         });
     }
 }

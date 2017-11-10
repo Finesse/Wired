@@ -5,8 +5,10 @@ namespace Finesse\Wired\Tests;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\NotModelException;
+use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\Mapper;
 use Finesse\Wired\Model;
+use Finesse\Wired\ModelQuery;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
 
@@ -212,6 +214,48 @@ class MapperTest extends TestCase
         $user->id = ['foo', 'bar'];
         $this->assertException(IncorrectModelException::class, function () use ($mapper, $user) {
             $mapper->delete($user);
+        });
+    }
+
+    /**
+     * Tests the `load` method
+     */
+    public function testLoad()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        // Single model
+        $user1 = $mapper->model(User::class)->find(11);
+        $mapper->load($user1, 'posts');
+        $this->assertCount(2, $user1->posts);
+        $this->assertEquals(6, $user1->posts[0]->key);
+        $this->assertEquals(12, $user1->posts[1]->key);
+
+        // Load only missing
+        $user2 = $mapper->model(User::class)->find(6);
+        $mapper->load([$user1, $user2], 'posts', function (ModelQuery $query) {
+            $query->where('created_at', '<', mktime(0, 0, 0, 11, 6, 2017));
+        }, true);
+        $this->assertCount(2, $user1->posts);
+        $this->assertCount(3, $user2->posts);
+
+        // Load many models
+        $posts = $mapper->model(Post::class)->get();
+        $mapper->load($posts, 'author');
+        $mapper->load($posts, 'category');
+        foreach ($posts as $post) {
+            $this->assertTrue(isset($post->author));
+            $this->assertTrue(isset($post->category));
+        }
+
+        // Undefined relation
+        $this->assertException(RelationException::class, function () use ($mapper, $posts) {
+            $mapper->load($posts, 'fubar');
+        }, function (RelationException $exception) {
+            $this->assertEquals(
+                'The relation `fubar` is not defined in the '.Post::class.' model',
+                $exception->getMessage()
+            );
         });
     }
 }

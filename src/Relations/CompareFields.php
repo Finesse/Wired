@@ -2,6 +2,7 @@
 
 namespace Finesse\Wired\Relations;
 
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
@@ -93,11 +94,21 @@ abstract class CompareFields implements RelationInterface
 
     /**
      * {@inheritDoc}
-     * @todo Test
      */
-    public function loadRelatives(Mapper $mapper, string $name, array $models, \Closure $constraint = null)
-    {
-        /** @var ModelInterface[] $models (stupid IDE) */
+    public function loadRelatives(
+        Mapper $mapper,
+        string $name,
+        array $models,
+        \Closure $constraint = null,
+        bool $onlyMissing = false
+    ) {
+        // Filtering the models that already have loaded relatives
+        if ($onlyMissing) {
+            $models = array_filter($models, function (ModelInterface $model) use ($name) {
+                return !$model->doesHaveLoadedRelatives($name);
+            });
+        }
+
         if (empty($models)) {
             return;
         }
@@ -109,30 +120,43 @@ abstract class CompareFields implements RelationInterface
         // Collecting the list of unique target model column values
         $searchValues = [];
         foreach ($models as $model) {
-            $searchValues[$model->$currentModelField] = true;
+            $searchValue = $model->$currentModelField;
+
+            if ($searchValue === null) {
+                continue;
+            }
+            if (!is_scalar($searchValue)) {
+                throw new IncorrectModelException(sprintf(
+                    'The model `%s` field value expected to be scalar or null, %s given',
+                    $currentModelField,
+                    is_object($searchValue) ? get_class($searchValue) : gettype($searchValue)
+                ));
+            }
+
+            $searchValues[$searchValue] = true;
         }
         $searchValues = array_keys($searchValues);
 
-        // Getting related model instances
-        $query = $mapper->model($this->targetModelClass);
-        if ($constraint) {
-            $query = $constraint($query) ?? $query;
+        // Getting relative model
+        if (!empty($searchValues)) {
+            $query = $mapper->model($this->targetModelClass);
+            if ($constraint) {
+                $query = $constraint($query) ?? $query;
+            }
+            // whereIn is applied after to make sure that the relation closure is applied with the AND rule
+            $relatives = $query->whereIn($this->getTargetModelField(), $searchValues)->get();
+        } else {
+            $relatives = [];
         }
-        // whereIn is applied after to make sure that the relation closure is applied with the AND rule
-        $relatives = $query
-            ->whereIn($this->getTargetModelField(), $searchValues)
-            ->get();
 
         // Setting the relative models to the input models
         if ($this->expectsManyTargetModels) {
             $groupedRelatives = Helpers::groupObjectsByProperty($relatives, $targetModelField);
-
             foreach ($models as $model) {
                 $model->setLoadedRelatives($name, $groupedRelatives[$model->$currentModelField] ?? []);
             }
         } else {
             $relatives = Helpers::indexObjectsByProperty($relatives, $targetModelField);
-
             foreach ($models as $model) {
                 $model->setLoadedRelatives($name, $relatives[$model->$currentModelField] ?? null);
             }
