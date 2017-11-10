@@ -26,51 +26,52 @@ class HasManyTest extends TestCase
         $mapper = $this->makeMockDatabase();
 
         // Relation with no constraints
-        $this->assertEquals(10, $mapper
-            ->model(User::class)
-            ->whereRelation('posts')
-            ->count());
+        $relation = User::posts();
+        $query = $mapper->model(User::class);
+        $relation->applyToQueryWhere($query);
+        $this->assertEquals(10, $query->count());
 
         // Related with specified model
         $post = $mapper->model(Post::class)->find(8);
-        $users = $mapper->model(User::class)->whereRelation('posts', $post)->get();
+        $query = $mapper->model(User::class);
+        $relation->applyToQueryWhere($query, $post);
+        $users = $query->get();
         $this->assertCount(1, $users);
         $this->assertEquals('Quentin', $users[0]->name);
 
         // Relation with clause
-        $users = $mapper
-            ->model(User::class)
-            ->whereRelation('posts', function (ModelQuery $query) {
-                $query->where('created_at', '>=', mktime(19, 0, 0, 11, 7, 2017));
-            })
-            ->orderBy('id')
-            ->get();
+        $query = $mapper->model(User::class);
+        $relation->applyToQueryWhere($query, function (ModelQuery $query) {
+            $query->where('created_at', '>=', mktime(19, 0, 0, 11, 7, 2017));
+        });
+        $users = $query->orderBy('id')->get();
         $this->assertCount(3, $users);
         $this->assertEquals('Charlie', $users[0]->name);
         $this->assertEquals('Frank', $users[1]->name);
         $this->assertEquals('Jack', $users[2]->name);
 
         // Self relation
-        $categories = $mapper
-            ->model(Category::class)
-            ->whereRelation('children', function (ModelQuery $query) {
-                $query->where('title', 'Hockey');
-            })
-            ->orderBy('id')
-            ->get();
+        $relation = Category::children();
+        $query = $mapper->model(Category::class);
+        $relation->applyToQueryWhere($query, function (ModelQuery $query) {
+            $query->where('title', 'Hockey');
+        });
+        $categories = $query->orderBy('id')->get();
         $this->assertCount(1, $categories);
         $this->assertEquals('Sport', $categories[0]->title);
 
         // Wrong specified model
-        $this->assertException(RelationException::class, function () use ($mapper) {
-            $mapper->model(User::class)->whereRelation('posts', new Category());
+        $relation = User::posts();
+        $query = $mapper->model(User::class);
+        $this->assertException(RelationException::class, function () use ($relation, $query) {
+            $relation->applyToQueryWhere($query, new Category());
         }, function (RelationException $exception) {
             $this->assertStringStartsWith('The given model ', $exception->getMessage());
         });
 
         // Wrong argument
-        $this->assertException(InvalidArgumentException::class, function () use ($mapper) {
-            $mapper->model(User::class)->whereRelation('posts', 'foo');
+        $this->assertException(InvalidArgumentException::class, function () use ($relation, $query) {
+            $relation->applyToQueryWhere($query, 'foo');
         }, function (InvalidArgumentException $exception) {
             $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
         });

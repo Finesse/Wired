@@ -74,7 +74,7 @@ abstract class CompareFields implements RelationInterface
     /**
      * {@inheritDoc}
      */
-    public function applyToQueryWhere(ModelQuery $query, $constraint)
+    public function applyToQueryWhere(ModelQuery $query, $constraint = null)
     {
         if ($constraint instanceof ModelInterface) {
             return $this->applyToQueryWhereWithModel($query, $constraint);
@@ -102,7 +102,7 @@ abstract class CompareFields implements RelationInterface
         \Closure $constraint = null,
         bool $onlyMissing = false
     ) {
-        // Filtering the models that already have loaded relatives
+        // Discarding the models that already have loaded relatives
         if ($onlyMissing) {
             $models = array_filter($models, function (ModelInterface $model) use ($name) {
                 return !$model->doesHaveLoadedRelatives($name);

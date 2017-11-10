@@ -102,7 +102,7 @@ class User extends Model
 ```
 
 All the table fields must be specified as the public properties of the class. All the public properties must be a table
-column name.
+column names.
 
 
 ## Usage

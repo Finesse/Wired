@@ -24,7 +24,7 @@ interface RelationInterface
      * @throws RelationException
      * @throws InvalidArgumentException
      */
-    public function applyToQueryWhere(ModelQuery $query, $constraint);
+    public function applyToQueryWhere(ModelQuery $query, $constraint = null);
 
     /**
      * Loads relative models of the given models and puts the loaded models to the given models.
