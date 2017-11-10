@@ -2,6 +2,7 @@
 
 namespace Finesse\Wired\Tests;
 
+use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\Model;
 use Finesse\Wired\RelationInterface;
 use Finesse\Wired\Relations\BelongsTo;
@@ -65,7 +66,7 @@ class ModelTest extends TestCase
     }
 
     /**
-     * Tests the `getRelation` method
+     * Tests the `getRelation` and `getRelationOrFail` methods
      */
     public function testGetRelation()
     {
@@ -82,8 +83,18 @@ class ModelTest extends TestCase
         };
 
         $this->assertInstanceOf(RelationInterface::class, $model::getRelation('parent'));
+        $this->assertInstanceOf(RelationInterface::class, $model::getRelationOrFail('parent'));
         $this->assertNull($model::getRelation('notARelation'));
         $this->assertNull($model::getRelation('foo'));
+
+        $this->assertException(RelationException::class, function () use ($model) {
+            $model::getRelationOrFail('fubar');
+        }, function (RelationException $exception) use ($model) {
+            $this->assertEquals(
+                'The relation `fubar` is not defined in the '.get_class($model).' model',
+                $exception->getMessage()
+            );
+        });
     }
 
     /**
@@ -123,6 +134,42 @@ class ModelTest extends TestCase
             $model->subscriptions;
         }, function (\Error $exception) {
             $this->assertEquals('Undefined property: '.User::class.'::$subscriptions', $exception->getMessage());
+        });
+    }
+
+    /**
+     * Tests the `associate` and `dissociate` methods
+     */
+    public function testAssociateDissociate()
+    {
+        $user1 = new User();
+        $user1->id = 5;
+        $user2 = new User();
+        $user2->id = 7;
+        $post = new Post();
+
+        $post->associate('author', $user1);
+        $this->assertEquals(5, $post->author_id);
+        $this->assertEquals(5, $post->author->id);
+
+        $post->associate('author', $user2);
+        $this->assertEquals(7, $post->author_id);
+        $this->assertEquals(7, $post->author->id);
+
+        $post->dissociate('author');
+        $this->assertNull($post->author_id);
+        $this->assertNull($post->author);
+
+        $this->assertException(RelationException::class, function () use ($user1, $post) {
+            $user1->associate('posts', $user1);
+        }, function (RelationException $exception) {
+            $this->assertEquals('Associating is not available for the `posts` relation', $exception->getMessage());
+        });
+
+        $this->assertException(RelationException::class, function () use ($user1, $post) {
+            $user1->dissociate('posts');
+        }, function (RelationException $exception) {
+            $this->assertEquals('Dissociating is not available for the `posts` relation', $exception->getMessage());
         });
     }
 }

@@ -136,4 +136,46 @@ class BelongsToTest extends TestCase
             );
         });
     }
+
+    /**
+     * Tests the `associate` and `dissociate` methods
+     */
+    public function testAssociateDissociate()
+    {
+        $relation = Post::author();
+        $user1 = new User();
+        $user1->id = 5;
+        $user2 = new User();
+        $user2->id = 7;
+        $post = new Post();
+
+        $this->assertNull($post->author_id);
+
+        $relation->associate('author', $post, $user1);
+        $this->assertEquals(5, $post->author_id);
+        $this->assertEquals(5, $post->author->id);
+
+        $relation->associate('author', $post, $user2);
+        $this->assertEquals(7, $post->author_id);
+        $this->assertEquals(7, $post->author->id);
+
+        $relation->dissociate('author', $post);
+        $this->assertNull($post->author_id);
+        $this->assertNull($post->author);
+
+        $this->assertException(RelationException::class, function () use ($relation, $post) {
+            $relation->associate('author', $post, new Category());
+        }, function (RelationException $exception) {
+            $this->assertStringStartsWith('The given model ', $exception->getMessage());
+        });
+
+        $this->assertException(IncorrectModelException::class, function () use ($relation, $post) {
+            $relation->associate('author', $post, new User());
+        }, function (IncorrectModelException $exception) {
+            $this->assertStringStartsWith(
+                'The associated model doesn\'t have a value in the identifier field `id`',
+                $exception->getMessage()
+            );
+        });
+    }
 }

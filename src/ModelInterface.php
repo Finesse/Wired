@@ -2,6 +2,8 @@
 
 namespace Finesse\Wired;
 
+use Finesse\Wired\Exceptions\RelationException;
+
 /**
  * Model. The class represents a database table. An instance represents a table row.
  *
@@ -61,6 +63,15 @@ interface ModelInterface
      * @return RelationInterface|null Relation object or null, if the relation doesn't exist
      */
     public static function getRelation(string $name);
+
+    /**
+     * Gets a model relation. Throws exception if the relation doesn't exist.
+     *
+     * @param string $name Relation name
+     * @return RelationInterface
+     * @throws RelationException
+     */
+    public static function getRelationOrFail(string $name): RelationInterface;
 
     /**
      * Sets a loaded relative model or models to this model instance.

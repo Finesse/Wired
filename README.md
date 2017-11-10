@@ -365,25 +365,26 @@ $orm->load($posts, 'author', null, true); // Doesn't load the second time
 Load relative models with relative submodels:
 
 ```php
-$orm->load($post, 'author.posts.category');
+$orm->load($post, 'author.posts.category'); // Relations are divided by dot
 
 foreach ($post->author->post as $sameAuthorPost) {
     $category = $sameAuthorPost->category;
 }
 ```
 
-#### Getting models filtered by relation
+#### Relations in the query builder
 
-Get all models having at least one related instance:
+Query all models having at least one related instance:
 
 ```php
 $usersWithPosts = $orm
     ->model(User::class)
     ->whereRelation('posts') // The relation name specified in the User model class
     ->get();
+    // Or ->delete() or ->update(...)
 ```
 
-Get all models related with a model instance:
+Query all models related with a model instance:
 
 ```php
 $user = $orm->model(User::class)->find(12);
@@ -393,7 +394,7 @@ $userPosts = $orm
     ->get();
 ```
 
-Get all models having at least one related instance which fits a clause:
+Query all models having at least one related instance which fits a clause:
 
 ```php
 $usersWithOldPosts = $orm
@@ -417,6 +418,30 @@ $reporters = $orm
 ```
 
 You can also use the `orWhereRelation`, `whereNoRelation` and `orWhereNoRelation` methods.
+
+#### Attaching related models
+
+If you need to attach a parent model to a child model you can use the helper method instead of setting a foreign key
+value manually:
+
+```php
+$user = $orm->model(User::class)->find(16);
+
+$post = new Post();
+$post->title = 'The Post';
+// ...
+$post->associate('author', $user); // 'author' is the relation name defined in the Post class
+$orm->save($post);
+```
+
+It works only for `BelongsTo` relations. There is one more method for detaching a parent model:
+
+```php
+$post->dissociate('author');
+$orm->save($post);
+```
+
+Warning! The `associate` and `dessociate` methods don't save models to the database, you need to do it manually.
 
 
 ## Versions compatibility

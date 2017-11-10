@@ -2,6 +2,10 @@
 
 namespace Finesse\Wired;
 
+use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\RelationException;
+use Finesse\Wired\Relations\AssociableRelationInterface;
+
 /**
  * {@inheritDoc}
  *
@@ -19,6 +23,45 @@ abstract class Model implements ModelInterface
      *     if relation is "-to-one".
      */
     protected $loadedRelatives = [];
+
+    /**
+     * Attaches a related model to this model (if the relation supports it). Add the attached model to the loaded
+     * relatives of this model.
+     *
+     * @param string $relationName Relation name
+     * @param ModelInterface $model Model to attach
+     * @throws RelationException
+     * @throws IncorrectModelException
+     */
+    public function associate(string $relationName, ModelInterface $model)
+    {
+        $relation = static::getRelationOrFail($relationName);
+
+        if ($relation instanceof AssociableRelationInterface) {
+            return $relation->associate($relationName, $this, $model);
+        }
+
+        throw new RelationException('Associating is not available for the `'.$relationName.'` relation');
+    }
+
+    /**
+     * Detaches the related model from this model (if the relation supports it). Removes the attached model to from
+     * loaded relatives of this model.
+     *
+     * @param string $relationName Relation name
+     * @throws RelationException
+     * @throws IncorrectModelException
+     */
+    public function dissociate(string $relationName)
+    {
+        $relation = static::getRelationOrFail($relationName);
+
+        if ($relation instanceof AssociableRelationInterface) {
+            return $relation->dissociate($relationName, $this);
+        }
+
+        throw new RelationException('Dissociating is not available for the `'.$relationName.'` relation');
+    }
 
     /**
      * {@inheritDoc}
@@ -107,6 +150,24 @@ abstract class Model implements ModelInterface
         } else {
             return null;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public static function getRelationOrFail(string $name): RelationInterface
+    {
+        $relation = static::getRelation($name);
+
+        if ($relation) {
+            return $relation;
+        }
+
+        throw new RelationException(sprintf(
+            'The relation `%s` is not defined in the %s model',
+            $name,
+            static::class
+        ));
     }
 
     /**

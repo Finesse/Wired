@@ -11,6 +11,7 @@ use Finesse\QueryScribe\Query as OriginalQuery;
 use Finesse\QueryScribe\QueryBricks\Criterion;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
@@ -89,6 +90,7 @@ class ModelQuery extends QueryProxy
      * @throws RelationException
      * @throws InvalidArgumentException
      * @throws IncorrectQueryException
+     * @throws IncorrectModelException
      */
     public function whereRelation(
         string $relationName,
@@ -110,14 +112,7 @@ class ModelQuery extends QueryProxy
         }
 
         // Get the relation object
-        $relation = $this->modelClass::getRelation($relationName);
-        if ($relation === null) {
-            throw new RelationException(sprintf(
-                'The relation `%s` is not defined in the %s model',
-                $relationName,
-                $this->modelClass
-            ));
-        }
+        $relation = $this->modelClass::getRelationOrFail($relationName);
 
         // Add the relation criterion
         $applyRelation = function (self $query) use ($relation, $target) {

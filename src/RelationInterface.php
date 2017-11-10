@@ -23,6 +23,7 @@ interface RelationInterface
      *     "must be related to at least one model".
      * @throws RelationException
      * @throws InvalidArgumentException
+     * @throws IncorrectModelException
      */
     public function applyToQueryWhere(ModelQuery $query, $constraint = null);
 

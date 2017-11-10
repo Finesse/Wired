@@ -105,7 +105,7 @@ class Mapper
      *
      * @param ModelInterface|ModelInterface[] $models A model or an array of models
      * @param string $relationName The relation name from which the relative models should be loaded. If you need to
-     *     load a subrelations too, add dot and threirs name to the relation name.
+     *     load a subrelations too, add dot and theirs name to the relation name.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
      * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
@@ -120,7 +120,7 @@ class Mapper
         }
 
         foreach (Helpers::groupModelsByClass($models) as $sameClassModels) {
-            $this->loadWithModelsOfSameClass($sameClassModels, $relationName, $clause, $onlyMissing);
+            $this->loadRelativesForModelsOfSameClass($sameClassModels, $relationName, $clause, $onlyMissing);
         }
     }
 
@@ -201,7 +201,7 @@ class Mapper
      *
      * @param ModelInterface[] $models Not empty array of models. The models must have the same class.
      * @param string $relationName The relation name from which the relative models should be loaded. If you need to
-     *     load a subrelations too, add dot and threirs name to the relation name.
+     *     load a subrelations too, add dot and theirs name to the relation name.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
      * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
@@ -209,7 +209,7 @@ class Mapper
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
-    protected function loadWithModelsOfSameClass(
+    protected function loadRelativesForModelsOfSameClass(
         array $models,
         string $relationName,
         \Closure $clause = null,
@@ -221,15 +221,7 @@ class Mapper
             $relationName = $relationsChain[$i];
             $isLastRelation = $i === $l - 1;
             $sampleModel = reset($models);
-
-            $relation = $sampleModel::getRelation($relationName);
-            if ($relation === null) {
-                throw new RelationException(sprintf(
-                    'The relation `%s` is not defined in the %s model',
-                    $relationName,
-                    get_class($sampleModel)
-                ));
-            }
+            $relation = $sampleModel::getRelationOrFail($relationName);
 
             $relation->loadRelatives(
                 $this,

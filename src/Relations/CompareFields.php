@@ -15,14 +15,16 @@ use Finesse\Wired\RelationInterface;
 /**
  * A common relation between two models where one model field is compared to the other model field.
  *
+ * The Subject and Object terms are used here. Subject is the model which has the relation. Object is the related model.
+ *
  * @author Surgie
  */
 abstract class CompareFields implements RelationInterface
 {
     /**
-     * @var string|null The current model field name
+     * @var string|null The subject model field name
      */
-    protected $currentModelField;
+    protected $subjectModelField;
 
     /**
      * @var string Columns compare rule (for the query whereColumn method)
@@ -31,44 +33,44 @@ abstract class CompareFields implements RelationInterface
     protected $compareRule;
 
     /**
-     * @var string|ModelInterface The target model class name (checked)
+     * @var string|ModelInterface The object model class name (checked)
      */
-    protected $targetModelClass;
+    protected $objectModelClass;
 
     /**
-     * @var string|null The target model field name
+     * @var string|null The object model field name
      */
-    protected $targetModelField;
+    protected $objectModelField;
 
     /**
-     * @var bool
+     * @var bool Does the subject model has 0-many object models (true) or 0-1 (false)
      */
-    protected $expectsManyTargetModels;
+    protected $expectsManyObjectModels;
 
     /**
-     * @param string|null $currentModelField The current model field name. If null, the current model identifier will be
+     * @param string|null $subjectModelField The subject model field name. If null, the subject model identifier will be
      *     used.
      * @param string $compareRule Columns compare rule (for the query whereColumn method)
-     * @param string $targetModelClass The target model class name
-     * @param string|null $targetModelField The target model field name. If null, the target model identifier will be
+     * @param string $objectModelClass The object model class name
+     * @param string|null $objectModelField The object model field name. If null, the object model identifier will be
      *     used.
-     * @param bool $expectsManyTargetModels Does the current model has 0-many target models (true) or 0-1 (false)?
+     * @param bool $expectsManyObjectModels Does the subject model has 0-many object models (true) or 0-1 (false)?
      * @throws NotModelException
      */
     public function __construct(
-        string $currentModelField = null,
+        string $subjectModelField = null,
         string $compareRule = '',
-        string $targetModelClass,
-        string $targetModelField = null,
-        bool $expectsManyTargetModels
+        string $objectModelClass,
+        string $objectModelField = null,
+        bool $expectsManyObjectModels
     ) {
-        Helpers::checkModelClass('The target model class name', $targetModelClass);
+        Helpers::checkModelClass('The object model class name', $objectModelClass);
 
-        $this->currentModelField = $currentModelField;
+        $this->subjectModelField = $subjectModelField;
         $this->compareRule = $compareRule;
-        $this->targetModelClass = $targetModelClass;
-        $this->targetModelField = $targetModelField;
-        $this->expectsManyTargetModels = $expectsManyTargetModels;
+        $this->objectModelClass = $objectModelClass;
+        $this->objectModelField = $objectModelField;
+        $this->expectsManyObjectModels = $expectsManyObjectModels;
     }
 
     /**
@@ -114,13 +116,13 @@ abstract class CompareFields implements RelationInterface
         }
 
         $sampleModel = reset($models);
-        $currentModelField = $this->getCurrentModelField(get_class($sampleModel));
-        $targetModelField = $this->getTargetModelField();
+        $subjectModelField = $this->getSubjectModelField(get_class($sampleModel));
+        $objectModelField = $this->getObjectModelField();
 
-        // Collecting the list of unique target model column values
+        // Collecting the list of unique object model column values
         $searchValues = [];
         foreach ($models as $model) {
-            $searchValue = $model->$currentModelField;
+            $searchValue = $model->$subjectModelField;
 
             if ($searchValue === null) {
                 continue;
@@ -128,7 +130,7 @@ abstract class CompareFields implements RelationInterface
             if (!is_scalar($searchValue)) {
                 throw new IncorrectModelException(sprintf(
                     'The model `%s` field value expected to be scalar or null, %s given',
-                    $currentModelField,
+                    $subjectModelField,
                     is_object($searchValue) ? get_class($searchValue) : gettype($searchValue)
                 ));
             }
@@ -139,26 +141,26 @@ abstract class CompareFields implements RelationInterface
 
         // Getting relative model
         if (!empty($searchValues)) {
-            $query = $mapper->model($this->targetModelClass);
+            $query = $mapper->model($this->objectModelClass);
             if ($constraint) {
                 $query = $constraint($query) ?? $query;
             }
             // whereIn is applied after to make sure that the relation closure is applied with the AND rule
-            $relatives = $query->whereIn($this->getTargetModelField(), $searchValues)->get();
+            $relatives = $query->whereIn($this->getObjectModelField(), $searchValues)->get();
         } else {
             $relatives = [];
         }
 
         // Setting the relative models to the input models
-        if ($this->expectsManyTargetModels) {
-            $groupedRelatives = Helpers::groupObjectsByProperty($relatives, $targetModelField);
+        if ($this->expectsManyObjectModels) {
+            $groupedRelatives = Helpers::groupObjectsByProperty($relatives, $objectModelField);
             foreach ($models as $model) {
-                $model->setLoadedRelatives($name, $groupedRelatives[$model->$currentModelField] ?? []);
+                $model->setLoadedRelatives($name, $groupedRelatives[$model->$subjectModelField] ?? []);
             }
         } else {
-            $relatives = Helpers::indexObjectsByProperty($relatives, $targetModelField);
+            $relatives = Helpers::indexObjectsByProperty($relatives, $objectModelField);
             foreach ($models as $model) {
-                $model->setLoadedRelatives($name, $relatives[$model->$currentModelField] ?? null);
+                $model->setLoadedRelatives($name, $relatives[$model->$subjectModelField] ?? null);
             }
         }
     }
@@ -173,18 +175,12 @@ abstract class CompareFields implements RelationInterface
      */
     protected function applyToQueryWhereWithModel(ModelQuery $query, ModelInterface $model)
     {
-        if (!$model instanceof $this->targetModelClass) {
-            throw new RelationException(sprintf(
-                'The given model %s is not a %s model',
-                get_class($model),
-                $this->targetModelClass
-            ));
-        }
+        $this->checkObjectModel($model);
 
         $query->where(
-            $this->getCurrentModelField($query->modelClass),
+            $this->getSubjectModelField($query->modelClass),
             $this->compareRule,
-            $model->{$this->getTargetModelField()}
+            $model->{$this->getObjectModelField()}
         );
     }
 
@@ -199,34 +195,51 @@ abstract class CompareFields implements RelationInterface
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
         // whereColumn is applied after to make sure that the relation closure is applied with the AND rule
-        $subQuery = $query->resolveModelSubQueryClosure($this->targetModelClass, $clause ?? function () {});
+        $subQuery = $query->resolveModelSubQueryClosure($this->objectModelClass, $clause ?? function () {});
         $subQuery->whereColumn(
-            $query->getTableIdentifier().'.'.$this->getCurrentModelField($query->modelClass),
+            $query->getTableIdentifier().'.'.$this->getSubjectModelField($query->modelClass),
             $this->compareRule,
-            $subQuery->getTableIdentifier().'.'.$this->getTargetModelField()
+            $subQuery->getTableIdentifier().'.'.$this->getObjectModelField()
         );
 
         $query->whereExists($subQuery);
     }
 
     /**
-     * Gets the current model field name.
+     * Gets the subject model field name.
      *
-     * @param string|ModelInterface $currentModelClass Current model class name
+     * @param string|ModelInterface $subjectModelClass Subject model class name
      * @return string
      */
-    protected function getCurrentModelField(string $currentModelClass): string
+    protected function getSubjectModelField(string $subjectModelClass): string
     {
-        return $this->currentModelField ?? $currentModelClass::getIdentifierField();
+        return $this->subjectModelField ?? $subjectModelClass::getIdentifierField();
     }
 
     /**
-     * Gets the target model field name.
+     * Gets the object model field name.
      *
      * @return string
      */
-    protected function getTargetModelField(): string
+    protected function getObjectModelField(): string
     {
-        return $this->targetModelField ?? $this->targetModelClass::getIdentifierField();
+        return $this->objectModelField ?? $this->objectModelClass::getIdentifierField();
+    }
+
+    /**
+     * Checks that the given model is an object model class model.
+     *
+     * @param ModelInterface $model
+     * @throws RelationException If the model is not an object model class model
+     */
+    protected function checkObjectModel(ModelInterface $model)
+    {
+        if (!($model instanceof $this->objectModelClass)) {
+            throw new RelationException(sprintf(
+                'The given model %s is not a %s model',
+                get_class($model),
+                $this->objectModelClass
+            ));
+        }
     }
 }
