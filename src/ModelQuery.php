@@ -20,6 +20,8 @@ use Finesse\Wired\Exceptions\RelationException;
 /**
  * Query builder for targeting a model.
  *
+ * All the methods throw Finesse\Wired\Exceptions\InvalidArgumentException exceptions if not specified explicitly.
+ *
  * @author Surgie
  */
 class ModelQuery extends QueryProxy

@@ -434,7 +434,7 @@ $post->associate('author', $user); // 'author' is the relation name defined in t
 $orm->save($post);
 ```
 
-It works only for `BelongsTo` relations. There is one more method for detaching a parent model:
+It works only for `BelongsTo` relations. There is a method for detaching a parent model:
 
 ```php
 $post->dissociate('author');
