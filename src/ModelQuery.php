@@ -8,7 +8,6 @@ use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
 use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\QueryScribe\Query as OriginalQuery;
-use Finesse\QueryScribe\QueryBricks\Criterion;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
 use Finesse\Wired\Exceptions\IncorrectModelException;
@@ -86,8 +85,7 @@ class ModelQuery extends QueryProxy
      *     specified model". Closure means "must be related to a model that fit the clause in the closure". Null means
      *     "must be related to at least one model".
      * @param bool $not Whether the rule should be "not related"
-     * @param int $appendRule How the criterion should be appended to the others (on of Criterion::APPEND_RULE_*
-     *    constants)
+     * @param string $appendRule How the criterion should be appended to the others (SQL boolean operator name)
      * @return $this
      * @throws RelationException
      * @throws InvalidArgumentException
@@ -98,7 +96,7 @@ class ModelQuery extends QueryProxy
         string $relationName,
         $target = null,
         bool $not = false,
-        int $appendRule = Criterion::APPEND_RULE_AND
+        string $appendRule = 'AND'
     ): self {
         if ($this->modelClass === null) {
             throw new IncorrectQueryException('This query is not a model query');
@@ -135,7 +133,7 @@ class ModelQuery extends QueryProxy
      */
     public function orWhereRelation(string $relationName, $target = null)
     {
-        return $this->whereRelation($relationName, $target, false, Criterion::APPEND_RULE_OR);
+        return $this->whereRelation($relationName, $target, false, 'OR');
     }
 
     /**
@@ -157,7 +155,7 @@ class ModelQuery extends QueryProxy
      */
     public function orWhereNoRelation(string $relationName, $target = null)
     {
-        return $this->whereRelation($relationName, $target, true, Criterion::APPEND_RULE_OR);
+        return $this->whereRelation($relationName, $target, true, 'OR');
     }
 
     /**
