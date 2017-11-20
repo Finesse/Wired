@@ -2,6 +2,7 @@
 
 namespace Finesse\Wired\Tests\Relations;
 
+use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\RelationException;
@@ -74,6 +75,16 @@ class HasManyTest extends TestCase
             $relation->applyToQueryWhere($query, 'foo');
         }, function (InvalidArgumentException $exception) {
             $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
+        });
+
+        // Query without model
+        $query = new ModelQuery(new class extends Query {
+            public function __construct() {}
+        });
+        $this->assertException(RelationException::class, function () use ($relation, $query) {
+            $relation->applyToQueryWhere($query);
+        }, function (RelationException $exception) {
+            $this->assertStringStartsWith('Can\'t get the subject model field name', $exception->getMessage());
         });
     }
 

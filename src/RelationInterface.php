@@ -4,6 +4,7 @@ namespace Finesse\Wired;
 
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\RelationException;
 
@@ -24,6 +25,7 @@ interface RelationInterface
      * @throws RelationException
      * @throws InvalidArgumentException
      * @throws IncorrectModelException
+     * @throws IncorrectQueryException
      */
     public function applyToQueryWhere(ModelQuery $query, $constraint = null);
 

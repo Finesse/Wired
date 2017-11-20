@@ -208,12 +208,22 @@ abstract class CompareFields implements RelationInterface
     /**
      * Gets the subject model field name.
      *
-     * @param string|ModelInterface $subjectModelClass Subject model class name
+     * @param string|null|ModelInterface $subjectModelClass Subject model class name
      * @return string
+     * @throws RelationException If the subject model field is not specified and the subject model class name is not
+     *     given
      */
-    protected function getSubjectModelField(string $subjectModelClass): string
+    protected function getSubjectModelField(string $subjectModelClass = null): string
     {
-        return $this->subjectModelField ?? $subjectModelClass::getIdentifierField();
+        if ($this->subjectModelField !== null) {
+            return $this->subjectModelField;
+        }
+        if ($subjectModelClass !== null) {
+            return $subjectModelClass::getIdentifierField();
+        }
+
+        throw new RelationException('Can\'t get the subject model field name'
+            . ' because the subject model field is not specified and the subject model class name is not given');
     }
 
     /**
