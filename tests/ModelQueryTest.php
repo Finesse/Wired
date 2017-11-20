@@ -22,6 +22,22 @@ use Finesse\Wired\Tests\ModelsForTests\User;
 class ModelQueryTest extends TestCase
 {
     /**
+     * Tests the `getModelClass` method
+     */
+    public function testGetModelClass()
+    {
+        $query = new class extends Query {
+            public function __construct() {}
+        };
+
+        $modelQuery = new ModelQuery($query);
+        $this->assertNull($modelQuery->getModelClass());
+
+        $modelQuery = new ModelQuery($query, User::class);
+        $this->assertEquals(User::class, $modelQuery->getModelClass());
+    }
+
+    /**
      * Tests the `getBaseQuery` method
      */
     public function testGetBaseQuery()
@@ -112,14 +128,12 @@ class ModelQueryTest extends TestCase
 
         $query = $mapper
             ->model(User::class)
-            ->where(function ($query) {
-                $this->assertInstanceOf(ModelQuery::class, $query);
-                $this->assertEquals(User::class, $query->modelClass);
+            ->where(function (ModelQuery $query) {
+                $this->assertEquals(User::class, $query->getModelClass());
                 $query->where('name', 'Jackie')->orWhere('email', 'like', 'jackie');
             })
-            ->whereExists(function ($query) {
-                $this->assertInstanceOf(ModelQuery::class, $query);
-                $this->assertNull($query->modelClass);
+            ->whereExists(function (ModelQuery $query) {
+                $this->assertNull($query->getModelClass());
                 $query->from('foo')->where('bar', 1);
             })
             ->getBaseQuery();
@@ -130,17 +144,15 @@ class ModelQueryTest extends TestCase
 
         // `resolveModelSubQueryClosure` with different models
         $modelQuery = $mapper->model(User::class);
-        $subQuery = $modelQuery->resolveModelSubQueryClosure(Post::class, function ($query) {
-            $this->assertInstanceOf(ModelQuery::class, $query);
-            $this->assertEquals(Post::class, $query->modelClass);
+        $subQuery = $modelQuery->resolveModelSubQueryClosure(Post::class, function (ModelQuery $query) {
+            $this->assertEquals(Post::class, $query->getModelClass());
         });
         $this->assertInstanceOf(Query::class, $subQuery);
         $this->assertAttributes(['table' => Post::getTable(), 'tableAlias' => null], $subQuery);
 
         // `resolveModelSubQueryClosure` with same model
-        $subQuery = $modelQuery->resolveModelSubQueryClosure(User::class, function ($query) {
-            $this->assertInstanceOf(ModelQuery::class, $query);
-            $this->assertEquals(User::class, $query->modelClass);
+        $subQuery = $modelQuery->resolveModelSubQueryClosure(User::class, function (ModelQuery $query) {
+            $this->assertEquals(User::class, $query->getModelClass());
         });
         $this->assertInstanceOf(Query::class, $subQuery);
         $this->assertAttributes(['table' => User::getTable(), 'tableAlias' => '__wired_reserved_alias_0'], $subQuery);

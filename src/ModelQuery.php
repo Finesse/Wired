@@ -26,10 +26,10 @@ use Finesse\Wired\Exceptions\RelationException;
 class ModelQuery extends QueryProxy
 {
     /**
-     * @var string|null|ModelInterface Target model class name (actually ModelInterface instance is not allowed, it
+     * @var string|null|ModelInterface The target model class name (actually ModelInterface instance is not allowed, it
      *     is specified here to type-hint IDE)
      */
-    public $modelClass;
+    protected $modelClass;
 
     /**
      * {@inheritDoc}
@@ -40,6 +40,15 @@ class ModelQuery extends QueryProxy
     {
         parent::__construct($baseQuery);
         $this->modelClass = $modelClass;
+    }
+
+    /**
+     * @return string|null|ModelInterface The target model class name (actually ModelInterface instance is not returned,
+     *     it is specified here to type-hint IDE)
+     */
+    public function getModelClass()
+    {
+        return $this->modelClass;
     }
 
     /**

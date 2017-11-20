@@ -178,7 +178,7 @@ abstract class CompareFields implements RelationInterface
         $this->checkObjectModel($model);
 
         $query->where(
-            $this->getSubjectModelField($query->modelClass),
+            $this->getSubjectModelField($query->getModelClass()),
             $this->compareRule,
             $model->{$this->getObjectModelField()}
         );
@@ -197,7 +197,7 @@ abstract class CompareFields implements RelationInterface
         // whereColumn is applied after to make sure that the relation closure is applied with the AND rule
         $subQuery = $query->resolveModelSubQueryClosure($this->objectModelClass, $clause ?? function () {});
         $subQuery->whereColumn(
-            $query->getTableIdentifier().'.'.$this->getSubjectModelField($query->modelClass),
+            $query->getTableIdentifier().'.'.$this->getSubjectModelField($query->getModelClass()),
             $this->compareRule,
             $subQuery->getTableIdentifier().'.'.$this->getObjectModelField()
         );
