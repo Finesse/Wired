@@ -3,6 +3,7 @@
 namespace Finesse\Wired\Relations;
 
 use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
@@ -139,7 +140,7 @@ abstract class CompareFields implements RelationInterface
         }
         $searchValues = array_keys($searchValues);
 
-        // Getting relative model
+        // Getting relative models
         if (!empty($searchValues)) {
             $query = $mapper->model($this->objectModelClass);
             if ($constraint) {
@@ -178,7 +179,7 @@ abstract class CompareFields implements RelationInterface
         $this->checkObjectModel($model);
 
         $query->where(
-            $this->getSubjectModelField($query->getModelClass()),
+            $this->getSubjectModelFieldFromQuery($query),
             $this->compareRule,
             $model->{$this->getObjectModelField()}
         );
@@ -197,7 +198,7 @@ abstract class CompareFields implements RelationInterface
         // whereColumn is applied after to make sure that the relation closure is applied with the AND rule
         $subQuery = $query->resolveModelSubQueryClosure($this->objectModelClass, $clause ?? function () {});
         $subQuery->whereColumn(
-            $query->getTableIdentifier().'.'.$this->getSubjectModelField($query->getModelClass()),
+            $query->getTableIdentifier().'.'.$this->getSubjectModelFieldFromQuery($query),
             $this->compareRule,
             $subQuery->getTableIdentifier().'.'.$this->getObjectModelField()
         );
@@ -208,22 +209,29 @@ abstract class CompareFields implements RelationInterface
     /**
      * Gets the subject model field name.
      *
-     * @param string|null|ModelInterface $subjectModelClass Subject model class name
+     * @param string|ModelInterface $subjectModelClass Subject model class name
      * @return string
-     * @throws RelationException If the subject model field is not specified and the subject model class name is not
-     *     given
      */
-    protected function getSubjectModelField(string $subjectModelClass = null): string
+    protected function getSubjectModelField(string $subjectModelClass): string
     {
-        if ($this->subjectModelField !== null) {
-            return $this->subjectModelField;
-        }
-        if ($subjectModelClass !== null) {
-            return $subjectModelClass::getIdentifierField();
+        return $this->subjectModelField ?? $subjectModelClass::getIdentifierField();
+    }
+
+    /**
+     * Gets the subject model field name. Uses a query object to get the subject model class name.
+     *
+     * @param ModelQuery $query
+     * @return string
+     * @throws IncorrectQueryException If the query doesn't have a model
+     */
+    protected function getSubjectModelFieldFromQuery(ModelQuery $query): string
+    {
+        $modelClass = $query->getModelClass();
+        if ($modelClass === null) {
+            throw new IncorrectQueryException('The given query doesn\'t have a context model');
         }
 
-        throw new RelationException('Can\'t get the subject model field name'
-            . ' because the subject model field is not specified and the subject model class name is not given');
+        return $this->getSubjectModelField($modelClass);
     }
 
     /**

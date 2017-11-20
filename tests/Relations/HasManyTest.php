@@ -4,6 +4,7 @@ namespace Finesse\Wired\Tests\Relations;
 
 use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
@@ -81,10 +82,10 @@ class HasManyTest extends TestCase
         $query = new ModelQuery(new class extends Query {
             public function __construct() {}
         });
-        $this->assertException(RelationException::class, function () use ($relation, $query) {
+        $this->assertException(IncorrectQueryException::class, function () use ($relation, $query) {
             $relation->applyToQueryWhere($query);
-        }, function (RelationException $exception) {
-            $this->assertStringStartsWith('Can\'t get the subject model field name', $exception->getMessage());
+        }, function (IncorrectQueryException $exception) {
+            $this->assertEquals('The given query doesn\'t have a context model', $exception->getMessage());
         });
     }
 

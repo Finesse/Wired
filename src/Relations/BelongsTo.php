@@ -2,7 +2,6 @@
 
 namespace Finesse\Wired\Relations;
 
-use Finesse\Wired\Relations\AssociableRelationInterface;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\ModelInterface;

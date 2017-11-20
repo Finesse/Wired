@@ -2,7 +2,9 @@
 
 namespace Finesse\Wired\Tests\Relations;
 
+use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
@@ -75,6 +77,16 @@ class BelongsToTest extends TestCase
             $relation->applyToQueryWhere($query, 'Jack');
         }, function (InvalidArgumentException $exception) {
             $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
+        });
+
+        // Query without model
+        $query = new ModelQuery(new class extends Query {
+            public function __construct() {}
+        });
+        $this->assertException(IncorrectQueryException::class, function () use ($relation, $query) {
+            $relation->applyToQueryWhere($query);
+        }, function (IncorrectQueryException $exception) {
+            $this->assertEquals('The given query doesn\'t have a context model', $exception->getMessage());
         });
     }
 
