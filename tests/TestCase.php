@@ -117,7 +117,12 @@ class TestCase extends BaseTestCase
             ['id' => 5, 'parent_id' => 4, 'title' => 'Hockey'],
             ['id' => 6, 'parent_id' => 4, 'title' => 'Football'],
             ['id' => 7, 'parent_id' => 2, 'title' => 'Lifehacks'],
-            ['id' => 8, 'parent_id' => 2, 'title' => 'Receipts']
+            ['id' => 8, 'parent_id' => 2, 'title' => 'Receipts'],
+
+            // Recursion
+            ['id' => 9, 'parent_id' => 10, 'title' => 'Tick'],
+            ['id' => 10, 'parent_id' => 9, 'title' => 'Tack'],
+            ['id' => 11, 'parent_id' => 11, 'title' => 'Selfparent']
         ]);
 
         $database->statement('

@@ -9,6 +9,7 @@ use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\Mapper;
 use Finesse\Wired\Model;
 use Finesse\Wired\ModelQuery;
+use Finesse\Wired\Tests\ModelsForTests\Category;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
 
@@ -261,6 +262,82 @@ class MapperTest extends TestCase
         }, function (RelationException $exception) {
             $this->assertEquals(
                 'The relation `fubar` is not defined in the '.Post::class.' model',
+                $exception->getMessage()
+            );
+        });
+    }
+
+    /**
+     * Tests the `loadCyclic` method
+     */
+    public function testLoadCyclic()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        // Many related
+        /** @var Category $category */
+        $category = $mapper->model(Category::class)->find(1);
+        $mapper->loadCyclic($category, 'children');
+        $this->assertCount(2, $category->children);
+        $this->assertEquals('Economics', $category->children[0]->title);
+        $this->assertEquals('Sport', $category->children[1]->title);
+        $this->assertCount(0, $category->children[0]->children);
+        $this->assertCount(2, $category->children[1]->children);
+        $this->assertEquals('Hockey', $category->children[1]->children[0]->title);
+        $this->assertCount(0, $category->children[1]->children[0]->children);
+        $this->assertEquals('Football', $category->children[1]->children[1]->title);
+        $this->assertCount(0, $category->children[1]->children[1]->children);
+
+        // One related
+        $category = $mapper->model(Category::class)->find(4);
+        $mapper->loadCyclic($category, 'parent');
+        $this->assertEquals('News', $category->parent->title);
+        $this->assertNull($category->parent->parent);
+
+        // Recursive relation (many)
+        $category = $mapper->model(Category::class)->find(9);
+        $mapper->loadCyclic($category, 'children');
+        $this->assertCount(1, $category->children);
+        $this->assertEquals('Tack', $category->children[0]->title);
+        $this->assertCount(1, $category->children[0]->children);
+        $this->assertEquals($category, $category->children[0]->children[0]);
+
+        // Recursive relation (one)
+        $category = $mapper->model(Category::class)->find(9);
+        $mapper->loadCyclic($category, 'parent');
+        $this->assertEquals('Tack', $category->parent->title);
+        $this->assertEquals($category, $category->parent->parent);
+
+        // Recursive relation (selfparent, many)
+        $category = $mapper->model(Category::class)->find(11);
+        $mapper->loadCyclic($category, 'children');
+        $this->assertCount(1, $category->children);
+        $this->assertEquals($category, $category->children[0]);
+
+        // Recursive relation (selfparent, one)
+        $category = $mapper->model(Category::class)->find(11);
+        $mapper->loadCyclic($category, 'parent');
+        $this->assertEquals($category, $category->parent);
+
+        // Not a cyclic relation
+        $category = $mapper->model(Category::class)->find(4);
+        $this->assertException(RelationException::class, function () use ($mapper, $category) {
+            $mapper->loadCyclic($category, 'posts');
+        }, function (RelationException $exception) {
+            $this->assertEquals(
+                'The relation `posts` is not defined in the '.Post::class.' model;'
+                    . ' perhaps, the given relation is not cycled',
+                $exception->getMessage()
+            );
+        });
+
+        // Not existing relation
+        $category = $mapper->model(Category::class)->find(4);
+        $this->assertException(RelationException::class, function () use ($mapper, $category) {
+            $mapper->loadCyclic($category, 'author');
+        }, function (RelationException $exception) {
+            $this->assertEquals(
+                'The relation `author` is not defined in the '.Post::class.' model',
                 $exception->getMessage()
             );
         });

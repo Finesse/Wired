@@ -113,4 +113,57 @@ class Helpers
 
         return $result;
     }
+
+    public static function filterModelsRelatives(array $models, string $relation, callable $filter)
+    {
+        foreach ($models as $model) {
+            static::filterModelRelatives($model, $relation, function (ModelInterface $relative) use ($filter, $model) {
+                return $filter($relative, $model);
+            });
+        }
+    }
+
+    public static function filterModelRelatives(ModelInterface $model, string $relation, callable $filter)
+    {
+        if (!$model->doesHaveLoadedRelatives($relation)) {
+            return;
+        }
+
+        $relatives = $model->getLoadedRelatives($relation);
+
+        if ($relatives === null) {
+            $relatives = [];
+            $areRelativesMultiple = false;
+        } elseif (is_array($relatives)) {
+            $areRelativesMultiple = true;
+        } else {
+            $relatives = [$relatives];
+            $areRelativesMultiple = false;
+        }
+
+        /** @var ModelInterface[] $relatives */
+        $areRelativesChanged = false;
+
+        foreach ($relatives as $index => $relative) {
+            $newRelative = $filter($relative);
+
+            if ($newRelative === true) {
+                continue;
+            }
+            if ($newRelative === false) {
+                unset($relatives[$index]);
+                $areRelativesChanged = true;
+                continue;
+            }
+            if ($newRelative !== $relative) {
+                $relatives[$index] = $newRelative;
+                $areRelativesChanged = true;
+                continue;
+            }
+        }
+
+        if ($areRelativesChanged) {
+            $model->setLoadedRelatives($relation, $areRelativesMultiple ? $relatives : $relatives[0]);
+        }
+    }
 }
