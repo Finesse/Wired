@@ -14,24 +14,18 @@ use Finesse\Wired\ModelQuery;
 use Finesse\Wired\RelationInterface;
 
 /**
- * A common relation between two models where one model field is compared to the other model field.
+ * A common relation between two models where one model field value is equal to the other model field value.
  *
  * The Subject and Object terms are used here. Subject is the model which has the relation. Object is the related model.
  *
  * @author Surgie
  */
-abstract class CompareFields implements RelationInterface
+abstract class EqualFields implements RelationInterface
 {
     /**
      * @var string|null The subject model field name
      */
     protected $subjectModelField;
-
-    /**
-     * @var string Columns compare rule (for the query whereColumn method)
-     * @see ModelQuery::where
-     */
-    protected $compareRule;
 
     /**
      * @var string|ModelInterface The object model class name (checked)
@@ -51,7 +45,6 @@ abstract class CompareFields implements RelationInterface
     /**
      * @param string|null $subjectModelField The subject model field name. If null, the subject model identifier will be
      *     used.
-     * @param string $compareRule Columns compare rule (for the query whereColumn method)
      * @param string $objectModelClass The object model class name
      * @param string|null $objectModelField The object model field name. If null, the object model identifier will be
      *     used.
@@ -60,7 +53,6 @@ abstract class CompareFields implements RelationInterface
      */
     public function __construct(
         string $subjectModelField = null,
-        string $compareRule = '',
         string $objectModelClass,
         string $objectModelField = null,
         bool $expectsManyObjectModels
@@ -68,7 +60,6 @@ abstract class CompareFields implements RelationInterface
         Helpers::checkModelClass('The object model class name', $objectModelClass);
 
         $this->subjectModelField = $subjectModelField;
-        $this->compareRule = $compareRule;
         $this->objectModelClass = $objectModelClass;
         $this->objectModelField = $objectModelField;
         $this->expectsManyObjectModels = $expectsManyObjectModels;
@@ -87,8 +78,13 @@ abstract class CompareFields implements RelationInterface
             return $this->applyToQueryWhereWithClause($query, $constraint);
         }
 
+        if (is_array($constraint)) {
+            return $this->applyToQueryWhereWithModels($query, $constraint);
+        }
+
         throw new InvalidArgumentException(sprintf(
-            'The constraint argument expected to be %s, %s or null, %s given',
+            'The constraint argument expected to be %s, %s[], %s or null, %s given',
+            ModelInterface::class,
             ModelInterface::class,
             \Closure::class,
             is_object($constraint) ? get_class($constraint) : gettype($constraint)
@@ -172,7 +168,7 @@ abstract class CompareFields implements RelationInterface
      * @param ModelQuery $query Where to apply
      * @param ModelInterface $model The model
      * @throws RelationException
-     * @throws InvalidArgumentException
+     * @throws IncorrectQueryException
      */
     protected function applyToQueryWhereWithModel(ModelQuery $query, ModelInterface $model)
     {
@@ -180,9 +176,30 @@ abstract class CompareFields implements RelationInterface
 
         $query->where(
             $this->getSubjectModelFieldFromQuery($query),
-            $this->compareRule,
+            '=',
             $model->{$this->getObjectModelField()}
         );
+    }
+
+    /**
+     * Applies itself with a models list to the where part of a query.
+     *
+     * @param ModelQuery $query Where to apply
+     * @param ModelInterface[] $models The models list
+     * @throws NotModelException
+     * @throws RelationException
+     * @throws IncorrectQueryException
+     */
+    protected function applyToQueryWhereWithModels(ModelQuery $query, array $models)
+    {
+        $values = [];
+
+        foreach ($models as $model) {
+            $this->checkObjectModel($model);
+            $values[] = $model->{$this->getObjectModelField()};
+        }
+
+        $query->whereIn($this->getSubjectModelFieldFromQuery($query), $values);
     }
 
     /**
@@ -191,7 +208,7 @@ abstract class CompareFields implements RelationInterface
      * @param ModelQuery $query Where to apply
      * @param \Closure $clause The clause. Null means no clause.
      * @throws NotModelException
-     * @throws InvalidArgumentException
+     * @throws IncorrectQueryException
      */
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
@@ -199,7 +216,7 @@ abstract class CompareFields implements RelationInterface
         $subQuery = $query->resolveModelSubQueryClosure($this->objectModelClass, $clause ?? function () {});
         $subQuery->whereColumn(
             $query->getTableIdentifier().'.'.$this->getSubjectModelFieldFromQuery($query),
-            $this->compareRule,
+            '=',
             $subQuery->getTableIdentifier().'.'.$this->getObjectModelField()
         );
 
@@ -245,19 +262,29 @@ abstract class CompareFields implements RelationInterface
     }
 
     /**
-     * Checks that the given model is an object model class model.
+     * Checks that the given value is an object model class model.
      *
-     * @param ModelInterface $model
+     * @param ModelInterface|mixed $model
+     * @throws NotModelException If the given value is not a model
      * @throws RelationException If the model is not an object model class model
      */
-    protected function checkObjectModel(ModelInterface $model)
+    protected function checkObjectModel($model)
     {
-        if (!($model instanceof $this->objectModelClass)) {
+        if ($model instanceof $this->objectModelClass) {
+            return;
+        }
+
+        if ($model instanceof ModelInterface) {
             throw new RelationException(sprintf(
                 'The given model %s is not a %s model',
                 get_class($model),
                 $this->objectModelClass
             ));
         }
+
+        throw new NotModelException(sprintf(
+            'The given value (%s) is not a model',
+            is_object($model) ? get_class($model) : gettype($model)
+        ));
     }
 }

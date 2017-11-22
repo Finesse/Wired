@@ -11,7 +11,7 @@ use Finesse\Wired\ModelInterface;
  *
  * @author Surgie
  */
-class BelongsTo extends CompareFields implements AssociableRelationInterface
+class BelongsTo extends EqualFields implements AssociableRelationInterface
 {
     /**
      * @param string|ModelInterface $modelClass The object model class name
@@ -22,7 +22,7 @@ class BelongsTo extends CompareFields implements AssociableRelationInterface
      */
     public function __construct(string $modelClass, string $foreignField, string $identifierField = null)
     {
-        parent::__construct($foreignField, '=', $modelClass, $identifierField, false);
+        parent::__construct($foreignField, $modelClass, $identifierField, false);
     }
 
     /**

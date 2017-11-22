@@ -6,6 +6,7 @@ use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 
 /**
@@ -19,10 +20,12 @@ interface RelationInterface
      * Applies itself to the where part of a query.
      *
      * @param ModelQuery $query Where to apply
-     * @param ModelInterface|\Closure|null $constraint Relation constraint. ModelInterface means "must be related to the
-     *     specified model". Closure means "must be related to a model that fit the clause in the closure". Null means
-     *     "must be related to at least one model".
+     * @param ModelInterface|ModelInterface[]|\Closure|null $constraint Relation constraint. ModelInterface means "must
+     *     be related to the specified model". Models array means "must be related to one of the specified models".
+     *     Closure means "must be related to a model that fit the clause in the closure". Null means "must be related to
+     *     at least one model".
      * @throws RelationException
+     * @throws NotModelException
      * @throws InvalidArgumentException
      * @throws IncorrectModelException
      * @throws IncorrectQueryException

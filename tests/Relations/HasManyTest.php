@@ -6,6 +6,7 @@ use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
 use Finesse\Wired\Tests\ModelsForTests\Category;
@@ -41,6 +42,15 @@ class HasManyTest extends TestCase
         $this->assertCount(1, $users);
         $this->assertEquals('Quentin', $users[0]->name);
 
+        // Related with one of the given models
+        $posts = $mapper->model(Post::class)->find([5, 14]);
+        $query = $mapper->model(User::class);
+        $relation->applyToQueryWhere($query, $posts);
+        $users = $query->orderBy('id')->get();
+        $this->assertCount(2, $users);
+        $this->assertEquals('Charlie', $users[0]->name);
+        $this->assertEquals('Frank', $users[1]->name);
+
         // Relation with clause
         $query = $mapper->model(User::class);
         $relation->applyToQueryWhere($query, function (ModelQuery $query) {
@@ -69,6 +79,11 @@ class HasManyTest extends TestCase
             $relation->applyToQueryWhere($query, new Category());
         }, function (RelationException $exception) {
             $this->assertStringStartsWith('The given model ', $exception->getMessage());
+        });
+        $this->assertException(NotModelException::class, function () use ($relation, $query) {
+            $relation->applyToQueryWhere($query, [1, 2, 3]);
+        }, function (NotModelException $exception) {
+            $this->assertStringStartsWith('The given value ', $exception->getMessage());
         });
 
         // Wrong argument

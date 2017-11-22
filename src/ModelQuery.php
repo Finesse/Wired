@@ -90,13 +90,15 @@ class ModelQuery extends QueryProxy
      *
      * @param string $relationName Current model relation name. You can specify chained relation by passing multiple
      *     relations names joined with a dot.
-     * @param ModelInterface|\Closure|null $target Relation target. ModelInterface means "must be related to the
-     *     specified model". Closure means "must be related to a model that fit the clause in the closure". Null means
-     *     "must be related to at least one model".
+     * @param ModelInterface|ModelInterface[]|\Closure|null $target Relation constraint. ModelInterface means "must
+     *     be related to the specified model". Models array means "must be related to one of the specified models".
+     *     Closure means "must be related to a model that fit the clause in the closure". Null means "must be related to
+     *     at least one model".
      * @param bool $not Whether the rule should be "not related"
      * @param string $appendRule How the criterion should be appended to the others (SQL boolean operator name)
      * @return $this
      * @throws RelationException
+     * @throws NotModelException
      * @throws InvalidArgumentException
      * @throws IncorrectQueryException
      * @throws IncorrectModelException

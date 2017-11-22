@@ -394,6 +394,16 @@ $userPosts = $orm
     ->get();
 ```
 
+Query all models related with on of the given models:
+
+```php
+$specificUsers = $orm->model(User::class)->find([5, 15, 16]);
+$specifitUsersPosts = $orm
+    ->model(Post::class)
+    ->whereRelation('author', $specificUsers)
+    ->get();
+```
+
 Query all models having at least one related instance which fits a clause:
 
 ```php

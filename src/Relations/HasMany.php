@@ -10,7 +10,7 @@ use Finesse\Wired\ModelInterface;
  *
  * @author Surgie
  */
-class HasMany extends CompareFields
+class HasMany extends EqualFields
 {
     /**
      * @param string|ModelInterface $modelClass The object model class name
@@ -21,6 +21,6 @@ class HasMany extends CompareFields
      */
     public function __construct(string $modelClass, string $foreignField, string $identifierField = null)
     {
-        parent::__construct($identifierField, '=', $modelClass, $foreignField, true);
+        parent::__construct($identifierField, $modelClass, $foreignField, true);
     }
 }

@@ -6,6 +6,7 @@ use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
 use Finesse\Wired\Tests\ModelsForTests\Category;
@@ -37,17 +38,27 @@ class BelongsToTest extends TestCase
         $user = $mapper->model(User::class)->where('name', 'Kenny')->first();
         $query = $mapper->model(Post::class);
         $relation->applyToQueryWhere($query, $user);
-        $posts = $query->orderBy('id')->get();
+        $posts = $query->orderBy('key')->get();
         $this->assertCount(2, $posts);
         $this->assertEquals(6, $posts[0]->key);
         $this->assertEquals(12, $posts[1]->key);
+
+        // Related with one of the given models
+        $users = $mapper->model(User::class)->find([3, 17]);
+        $query = $mapper->model(Post::class);
+        $relation->applyToQueryWhere($query, $users);
+        $posts = $query->orderBy('key')->get();
+        $this->assertCount(3, $posts);
+        $this->assertEquals(3, $posts[0]->key);
+        $this->assertEquals(8, $posts[1]->key);
+        $this->assertEquals(14, $posts[2]->key);
 
         // Relation with clause
         $query = $mapper->model(Post::class);
         $relation->applyToQueryWhere($query, function (ModelQuery $query) {
             $query->where('name', '>', 'W');
         });
-        $posts = $query->orderBy('id')->get();
+        $posts = $query->orderBy('key')->get();
         $this->assertCount(2, $posts);
         $this->assertEquals(4, $posts[0]->key);
         $this->assertEquals(10, $posts[1]->key);
@@ -70,6 +81,11 @@ class BelongsToTest extends TestCase
             $relation->applyToQueryWhere($query, new Category());
         }, function (RelationException $exception) {
             $this->assertStringStartsWith('The given model ', $exception->getMessage());
+        });
+        $this->assertException(NotModelException::class, function () use ($relation, $query) {
+            $relation->applyToQueryWhere($query, [1, 2, 3]);
+        }, function (NotModelException $exception) {
+            $this->assertStringStartsWith('The given value ', $exception->getMessage());
         });
 
         // Wrong argument
