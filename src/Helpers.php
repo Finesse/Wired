@@ -114,6 +114,16 @@ class Helpers
         return $result;
     }
 
+    /**
+     * Filter relatives lists of a models list.
+     *
+     * @param ModelInterface[] $models The models list
+     * @param string $relation Name of relation which relatives should be filtered
+     * @param callable $filter Filter function. Called on each relative model. Takes a relative model as the first
+     *     argument and a corresponding model from the list as the second argument. Return values: true — leave the
+     *     model, false — remove the model from the relatives list, ModelInterface — replace the relative model with the
+     *     given model.
+     */
     public static function filterModelsRelatives(array $models, string $relation, callable $filter)
     {
         foreach ($models as $model) {
@@ -123,6 +133,15 @@ class Helpers
         }
     }
 
+    /**
+     * Filters a model relatives list.
+     *
+     * @param ModelInterface $model The model
+     * @param string $relation Name of relation which relatives should be filtered
+     * @param callable $filter Filter function. Called on each relative model. Takes a relative model as the first
+     *     argument. Return values: true — leave the model, false — remove the model from the relatives list,
+     *     ModelInterface — replace the relative model with the given model.
+     */
     public static function filterModelRelatives(ModelInterface $model, string $relation, callable $filter)
     {
         if (!$model->doesHaveLoadedRelatives($relation)) {
@@ -163,7 +182,10 @@ class Helpers
         }
 
         if ($areRelativesChanged) {
-            $model->setLoadedRelatives($relation, $areRelativesMultiple ? $relatives : $relatives[0]);
+            $model->setLoadedRelatives(
+                $relation,
+                $areRelativesMultiple ? array_values($relatives) : $relatives[0] ?? null
+            );
         }
     }
 }

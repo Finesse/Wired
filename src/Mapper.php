@@ -129,9 +129,9 @@ class Mapper
      * loaded models to the given and relative models.
      *
      * @param ModelInterface|ModelInterface[] $models A model or an array of models
-     * @param string $relationName The relation name from which the relative models should be loaded. This relation must
-     *     have the same model type as the given models type at the end. If the model is cycled throw a related model,
-     *     specify all the chain relations names separated by a dot.
+     * @param string $relationName The relation name from which the relative models should be loaded. The relation end
+     *     model must also have this relation. If the model is cycled throw a related model, specify all the chain
+     *     relations names separated by a dot.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
      * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
@@ -223,7 +223,8 @@ class Mapper
     }
 
     /**
-     * Loads relative models of the given models and puts the loaded models to the given models.
+     * Loads relative models of the given models with same class and puts the loaded models to the given models. The
+     * loaded relatives have the same class.
      *
      * @param ModelInterface[] $models Not empty array of models. The models must have the same class.
      * @param string $relationName The relation name from which the relative models should be loaded. If you need to
@@ -267,13 +268,13 @@ class Mapper
     }
 
     /**
-     * Loads relative models of the given models, then loads related models of the related models and so on... Puts the
-     * loaded models to the given and relative models.
+     * Loads relative models of the given models with the same class, then loads related models of the related models
+     * and so on... Puts the loaded models to the given and relative models.
      *
-     * @param ModelInterface[] $models Array of models. The models must have the same class.
-     * @param string $relationName The relation name from which the relative models should be loaded. This relation must
-     *     have the same model type as the given models type at the end. If the model is cycled throw a related model,
-     *     specify all the chain relations names separated by a dot.
+     * @param ModelInterface[] $models Not empty array of models. The models must have the same class.
+     * @param string $relationName The relation name from which the relative models should be loaded. The relation end
+     *     model must also have this relation. If the model is cycled throw a related model, specify all the chain
+     *     relations names separated by a dot.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
      * @throws RelationException
@@ -286,26 +287,42 @@ class Mapper
         \Closure $clause = null,
         bool $onlyMissing = false
     ) {
-        /** @var string|ModelInterface $rootModelClass */
-        $rootModelClass = get_class(reset($models));
-        $rootIdentifierField = $rootModelClass::getIdentifierField();
+        $sampleModel = reset($models);
         $relationsNames = explode('.', $relationName);
         $lastRelationName = end($relationsNames);
+        $isFirstLevel = true;
 
-        // All the loaded relations are tracked to prevent a recursion
-        $loadedModels = Helpers::indexObjectsByProperty($models, $rootIdentifierField);
+        // All the loaded relatives are kept to prevent a recursion
+        $loadedModels = [
+            get_class($sampleModel) => Helpers::indexObjectsByProperty($models, $sampleModel::getIdentifierField())
+        ];
 
         // Cycles level by level
         while ($models) {
-            $penultimateModelsLevel = $this->loadRelativesForModelsOfSameClass(
-                $models,
-                $relationName,
-                $clause,
-                $onlyMissing
-            );
+            try {
+                $penultimateModelsLevel = $this->loadRelativesForModelsOfSameClass(
+                    $models,
+                    $relationName,
+                    $clause,
+                    $onlyMissing
+                );
+            } catch (RelationException $exception) {
+                if ($isFirstLevel) {
+                    throw $exception;
+                } else {
+                    throw new RelationException(
+                        $exception->getMessage().'; perhaps, the given relation is not cycled',
+                        $exception->getCode(),
+                        $exception
+                    );
+                }
+            }
 
             $models = [];
-            $relativeIdentifier = null;
+
+            // Just for cache
+            $relativeClass = null;
+            $relativeIdentifierField = null;
 
             // Replaces the loaded relatives, which are already loaded, with the old loaded relatives.
             // The replaced relatives are not loaded in the next iteration.
@@ -314,34 +331,27 @@ class Mapper
                 $penultimateModelsLevel,
                 $lastRelationName,
                 function (ModelInterface $relative) use (
-                    &$relativeIdentifier, $rootModelClass, $relationName, &$loadedModels, &$models
+                    &$relativeClass, &$relativeIdentifierField, $relationName, &$loadedModels, &$models
                 ) {
-                    if ($relativeIdentifier === null) {
-                        if (get_class($relative) !== $rootModelClass) {
-                            throw new RelationException(sprintf(
-                                'The given relation end model must have the same class as the given model (%s)'
-                                . ', but the end model of the `%s` relation is %s',
-                                $rootModelClass,
-                                $relationName,
-                                get_class($relative)
-                            ));
-                        }
-
-                        $relativeIdentifier = $relativeIdentifier ?? $relative::getIdentifierField();
+                    if ($relativeClass === null) {
+                        $relativeClass = get_class($relative);
+                        $relativeIdentifierField = $relative::getIdentifierField();
                     }
 
-                    $id = $relative->$relativeIdentifier;
+                    $id = $relative->$relativeIdentifierField;
 
                     // Catch a recursion
-                    if (isset($loadedModels[$id])) {
-                        return $loadedModels[$id];
+                    if (isset($loadedModels[$relativeClass][$id])) {
+                        return $loadedModels[$relativeClass][$id];
                     }
 
-                    $loadedModels[$id] = $relative;
+                    $loadedModels[$relativeClass][$id] = $relative;
                     $models[] = $relative;
                     return true;
                 }
             );
+
+            $isFirstLevel = false;
         }
     }
 }

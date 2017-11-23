@@ -4,6 +4,7 @@ namespace Finesse\Wired\Tests;
 
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Helpers;
+use Finesse\Wired\ModelInterface;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
 
@@ -123,5 +124,58 @@ class HelpersTest extends TestCase
         foreach ($posts as $post) {
             $this->assertInstanceOf(Post::class, $post);
         }
+    }
+
+    /**
+     * Tests the `filterModelRelatives` and `filterModelsRelatives` methods
+     */
+    public function testFilterModelRelatives()
+    {
+        $user0 = new User();
+        $user1 = new User();
+        $user1->setLoadedRelatives('posts', new Post());
+        $user2 = new User();
+        $user2->setLoadedRelatives('posts', [new Post(), new Post(), new Post()]);
+
+        $callCounter = 0;
+        Helpers::filterModelsRelatives([$user0, $user1, $user2], 'posts', function (
+            ModelInterface $relative, ModelInterface $model
+        ) use (
+            &$callCounter, $user0, $user1, $user2
+        ) {
+            switch (++$callCounter) {
+                case 1:
+                    $this->assertEquals($user1, $model);
+                    $this->assertInstanceOf(Post::class, $relative);
+                    $relative->text = 'Hello 1-0';
+                    return true;
+                case 2:
+                    $this->assertEquals($user2, $model);
+                    $this->assertInstanceOf(Post::class, $relative);
+                    $relative->text = 'Hello 2-1';
+                    return false;
+                case 3:
+                    $this->assertEquals($user2, $model);
+                    $this->assertInstanceOf(Post::class, $relative);
+                    $relative->text = 'Hello 2-2';
+                    return $relative;
+                case 4:
+                    $this->assertEquals($user2, $model);
+                    $this->assertInstanceOf(Post::class, $relative);
+                    $relative->text = 'Hello 2-3';
+                    $newRelative = new Post();
+                    $newRelative->text = 'New hello 2-3';
+                    return $newRelative;
+                default:
+                    $this->fail('The filter function is called too much times');
+            }
+        });
+
+        $this->assertEquals(4, $callCounter);
+        $this->assertFalse($user0->doesHaveLoadedRelatives('posts'));
+        $this->assertEquals('Hello 1-0', $user1->posts->text);
+        $this->assertCount(2, $user2->posts);
+        $this->assertEquals('Hello 2-2', $user2->posts[0]->text);
+        $this->assertEquals('New hello 2-3', $user2->posts[1]->text);
     }
 }

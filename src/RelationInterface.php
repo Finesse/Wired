@@ -33,7 +33,8 @@ interface RelationInterface
     public function applyToQueryWhere(ModelQuery $query, $constraint = null);
 
     /**
-     * Loads relative models of the given models and puts the loaded models to the given models.
+     * Loads relative models of the given models and puts the loaded models to the given models. The loaded relatives
+     * must have same class.
      *
      * @param Mapper $mapper A mapper from which new models can be obtained
      * @param string $name Relation name (for saving to the models)

@@ -226,6 +226,7 @@ class MapperTest extends TestCase
         $mapper = $this->makeMockDatabase();
 
         // Single model
+        /** @var User $user1 */
         $user1 = $mapper->model(User::class)->find(11);
         $mapper->load($user1, 'posts');
         $this->assertCount(2, $user1->posts);
@@ -233,6 +234,7 @@ class MapperTest extends TestCase
         $this->assertEquals(12, $user1->posts[1]->key);
 
         // Load only missing
+        /** @var User $user2 */
         $user2 = $mapper->model(User::class)->find(6);
         $mapper->load([$user1, $user2], 'posts', function (ModelQuery $query) {
             $query->where('created_at', '<', mktime(0, 0, 0, 11, 6, 2017));
@@ -250,6 +252,7 @@ class MapperTest extends TestCase
         }
 
         // Chained relation
+        /** @var User $user */
         $user = $mapper->model(User::class)->find(11);
         $mapper->load($user, 'posts.category');
         $this->assertCount(2, $user->posts);
@@ -319,6 +322,16 @@ class MapperTest extends TestCase
         $mapper->loadCyclic($category, 'parent');
         $this->assertEquals($category, $category->parent);
 
+        // Chained cyclic relation
+        /** @var Post $post */
+        $post = $mapper->model(Post::class)->find(6);
+        $mapper->loadCyclic($post, 'author.posts');
+        $this->assertEquals('Kenny', $post->author->name);
+        $this->assertCount(2, $post->author->posts);
+        $this->assertEquals($post, $post->author->posts[0]);
+        $this->assertEquals(12, $post->author->posts[1]->key);
+        $this->assertEquals($post->author, $post->author->posts[1]->author);
+
         // Not a cyclic relation
         $category = $mapper->model(Category::class)->find(4);
         $this->assertException(RelationException::class, function () use ($mapper, $category) {
@@ -337,7 +350,7 @@ class MapperTest extends TestCase
             $mapper->loadCyclic($category, 'author');
         }, function (RelationException $exception) {
             $this->assertEquals(
-                'The relation `author` is not defined in the '.Post::class.' model',
+                'The relation `author` is not defined in the '.Category::class.' model',
                 $exception->getMessage()
             );
         });
