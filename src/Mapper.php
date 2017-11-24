@@ -226,7 +226,7 @@ class Mapper
      * Loads relative models of the given models with same class and puts the loaded models to the given models. The
      * loaded relatives have the same class.
      *
-     * @param ModelInterface[] $models Not empty array of models. The models must have the same class.
+     * @param ModelInterface[] $models Array of models. The models must have the same class.
      * @param string $relationName The relation name from which the relative models should be loaded. If you need to
      *     load a subrelations too, add their names separated by a dot.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
@@ -246,6 +246,10 @@ class Mapper
         $relationsChain = explode('.', $relationName);
 
         for ($i = 0, $l = count($relationsChain); $i < $l; ++$i) {
+            if (!$models) {
+                break;
+            }
+
             $relationName = $relationsChain[$i];
             $isLastRelation = $i === $l - 1;
             $sampleModel = reset($models);
@@ -331,7 +335,7 @@ class Mapper
                 $penultimateModelsLevel,
                 $lastRelationName,
                 function (ModelInterface $relative) use (
-                    &$relativeClass, &$relativeIdentifierField, $relationName, &$loadedModels, &$models
+                    &$relativeClass, &$relativeIdentifierField, &$loadedModels, &$models
                 ) {
                     if ($relativeClass === null) {
                         $relativeClass = get_class($relative);

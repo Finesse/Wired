@@ -259,6 +259,11 @@ class MapperTest extends TestCase
         $this->assertEquals('Football', $user->posts[0]->category->title);
         $this->assertEquals('Lifehacks', $user->posts[1]->category->title);
 
+        // Chained relation without relatives on the first level
+        $user = $mapper->model(User::class)->find(19);
+        $mapper->load($user, 'posts.category');
+        $this->assertCount(0, $user->posts);
+
         // Undefined relation
         $this->assertException(RelationException::class, function () use ($mapper, $posts) {
             $mapper->load($posts, 'fubar');
