@@ -94,21 +94,9 @@ abstract class EqualFields implements RelationInterface
     /**
      * {@inheritDoc}
      */
-    public function loadRelatives(
-        Mapper $mapper,
-        string $name,
-        array $models,
-        \Closure $constraint = null,
-        bool $onlyMissing = false
-    ) {
-        // Discarding the models that already have loaded relatives
-        if ($onlyMissing) {
-            $models = array_filter($models, function (ModelInterface $model) use ($name) {
-                return !$model->doesHaveLoadedRelatives($name);
-            });
-        }
-
-        if (empty($models)) {
+    public function loadRelatives(Mapper $mapper, string $name, array $models, \Closure $constraint = null)
+    {
+        if (!$models) {
             return;
         }
 

@@ -235,11 +235,14 @@ class MapperTest extends TestCase
 
         // Load only missing
         /** @var User $user2 */
+        $post = $user1->posts[0];
+        $post->mark = 'test';
         $user2 = $mapper->model(User::class)->find(6);
         $mapper->load([$user1, $user2], 'posts', function (ModelQuery $query) {
             $query->where('created_at', '<', mktime(0, 0, 0, 11, 6, 2017));
         }, true);
         $this->assertCount(2, $user1->posts);
+        $this->assertEquals('test', $user1->posts[0]->mark); // The first user post is not overridden
         $this->assertCount(3, $user2->posts);
 
         // Load many models

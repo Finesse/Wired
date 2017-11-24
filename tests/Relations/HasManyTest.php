@@ -112,6 +112,7 @@ class HasManyTest extends TestCase
         $mapper = $this->makeMockDatabase();
         $relation = User::posts();
 
+        /** @var User[] $users */
         $users = $mapper->model(Post::class)->find([6, 11, 15]);
         $relation->loadRelatives($mapper, 'posts', $users);
         foreach ($users as $user) {
@@ -139,14 +140,8 @@ class HasManyTest extends TestCase
         $this->assertEquals(6, $users[1]->posts[0]->key);
         $this->assertCount(0, $users[2]->posts);
 
-        // Skip models with loaded relatives
-        $relation->loadRelatives($mapper, 'posts', $users, null, true);
-        foreach ($users as $user) {
-            $this->assertInternalType('array', $user->posts);
-        }
-        $this->assertCount(3, $users[0]->posts);
-        $this->assertCount(1, $users[1]->posts);
-        $this->assertCount(0, $users[2]->posts);
+        // Empty models list
+        $relation->loadRelatives($mapper, 'posts', []);
 
         // Models with null key value
         $user = new User();

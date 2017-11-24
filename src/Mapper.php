@@ -254,14 +254,16 @@ class Mapper
             $isLastRelation = $i === $l - 1;
             $sampleModel = reset($models);
             $relation = $sampleModel::getRelationOrFail($relationName);
+            $modelsToLoad = $models;
 
-            $relation->loadRelatives(
-                $this,
-                $relationName,
-                $models,
-                $isLastRelation ? $clause : null,
-                $isLastRelation ? $onlyMissing : true
-            );
+            // Filter out the models (for sending to the relatives loading) which relatives are already loaded
+            if (!$isLastRelation || $onlyMissing) {
+                $modelsToLoad = array_filter($modelsToLoad, function (ModelInterface $model) use ($relationName) {
+                    return !$model->doesHaveLoadedRelatives($relationName);
+                });
+            }
+
+            $relation->loadRelatives($this, $relationName, $modelsToLoad, $isLastRelation ? $clause : null);
 
             if (!$isLastRelation) {
                 $models = Helpers::collectModelsRelatives($models, $relationName);

@@ -137,20 +137,13 @@ class BelongsToTest extends TestCase
         $this->assertEquals('Anny', $posts[2]->author->name);
         $this->assertNull($posts[3]->author);
 
-        // Skip models with loaded relatives
-        $relation->loadRelatives($mapper, 'author', $posts, null, true);
-        foreach ($posts as $post) {
-            $this->assertTrue(isset($post->author));
-        }
-        $this->assertNull($posts[0]->author);
-        $this->assertNull($posts[1]->author);
-        $this->assertEquals('Anny', $posts[2]->author->name);
-        $this->assertNull($posts[3]->author);
-
         // Models with null key value
         $post = new Post();
         $relation->loadRelatives($mapper, 'author', [$post]);
         $this->assertNull($post->author);
+
+        // Empty models list
+        $relation->loadRelatives($mapper, 'author', []);
 
         // Incorrect key field value
         $post = new Post();
