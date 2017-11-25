@@ -114,15 +114,33 @@ class HelpersTest extends TestCase
     public function testCollectModelsRelatives()
     {
         $user1 = new User();
+        $user1->name = 'user 1';
         $user2 = new User();
-        $user2->setLoadedRelatives('posts', new Post());
+        $user2->name = 'user 2';
+        $post2_1 = new Post();
+        $post2_1->text = 'post 2 1';
+        $post2_1->setLoadedRelatives('author', new User());
+        $user2->setLoadedRelatives('posts', $post2_1);
         $user3 = new User();
-        $user3->setLoadedRelatives('posts', [new Post(), new Post()]);
+        $post3_1 = new Post();
+        $post3_1->text = 'post 3 1';
+        $post3_1->setLoadedRelatives('author', new User());
+        $post3_2 = new Post();
+        $post3_2->text = 'post 3 2';
+        $user3->setLoadedRelatives('posts', [$post3_1, $post3_2]);
 
+        // Single relation
         $posts = Helpers::collectModelsRelatives([$user1, $user2, $user3], 'posts');
         $this->assertCount(3, $posts);
-        foreach ($posts as $post) {
-            $this->assertInstanceOf(Post::class, $post);
+        $this->assertEquals($post2_1, $posts[0]);
+        $this->assertEquals($post3_1, $posts[1]);
+        $this->assertEquals($post3_2, $posts[2]);
+
+        // Relations chain
+        $users = Helpers::collectModelsRelatives([$user1, $user2, $user3], 'posts.author');
+        $this->assertCount(2, $users);
+        foreach ($users as $user) {
+            $this->assertInstanceOf(User::class, $user);
         }
     }
 
