@@ -135,10 +135,10 @@ class Helpers
             $nextLevelModels = static::collectModelsRelatives($models, $relation);
 
             foreach ($nextLevelModels as $index => $model) {
-                // We can't index the relatives list by models identifiers because the models can have no identifier.
+                // We can't index the relatives list by models identifiers because a model can have no identifier
                 if (in_array($model, $relatives, true)) {
-                    // If a related model is already in the relatives list, it's relatives are not collected for the
-                    // second time. It prevents a recursion.
+                    // If a related model is already in the relatives list, it's relatives are not collected the
+                    // second time. It prevents an infinite loop.
                     unset($nextLevelModels[$index]);
                 } else {
                     $relatives[] = $model;
