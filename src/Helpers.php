@@ -120,6 +120,38 @@ class Helpers
     }
 
     /**
+     * Collects models related models, related models related models and so on to a plain array.
+     *
+     * @param ModelInterface[] $models The models
+     * @param string $relation Relation name from which the relative models should be taken. If you need to collect
+     *     relatives from a subrelation, add it's name separated by a dot.
+     * @return ModelInterface[]
+     */
+    public static function collectModelsCyclicRelatives(array $models, string $relation): array
+    {
+        $relatives = [];
+
+        while ($models) {
+            $nextLevelModels = static::collectModelsRelatives($models, $relation);
+
+            foreach ($nextLevelModels as $index => $model) {
+                // We can't index the relatives list by models identifiers because the models can have no identifier.
+                if (in_array($model, $relatives, true)) {
+                    // If a related model is already in the relatives list, it's relatives are not collected for the
+                    // second time. It prevents a recursion.
+                    unset($nextLevelModels[$index]);
+                } else {
+                    $relatives[] = $model;
+                }
+            }
+
+            $models = $nextLevelModels;
+        }
+
+        return $relatives;
+    }
+
+    /**
      * Filter relatives lists of a models list.
      *
      * @param ModelInterface[] $models The models list

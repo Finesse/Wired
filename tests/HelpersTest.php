@@ -5,6 +5,7 @@ namespace Finesse\Wired\Tests;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Helpers;
 use Finesse\Wired\ModelInterface;
+use Finesse\Wired\Tests\ModelsForTests\Category;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
 
@@ -142,6 +143,40 @@ class HelpersTest extends TestCase
         foreach ($users as $user) {
             $this->assertInstanceOf(User::class, $user);
         }
+    }
+
+    /**
+     * Tests the `collectModelsCyclicRelatives` method
+     */
+    public function testCollectModelsCyclicRelatives()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        $category = $mapper->model(Category::class)->find(1);
+        $mapper->loadCyclic($category, 'children');
+        $allSubCategories = Helpers::collectModelsCyclicRelatives([$category], 'children');
+        $this->assertCount(4, $allSubCategories);
+        $this->assertEquals('Economics', $allSubCategories[0]->title);
+        $this->assertEquals('Sport', $allSubCategories[1]->title);
+        $this->assertEquals('Hockey', $allSubCategories[2]->title);
+        $this->assertEquals('Football', $allSubCategories[3]->title);
+
+        $category = $mapper->model(Category::class)->find(5);
+        $mapper->loadCyclic($category, 'parent');
+        $allParents = Helpers::collectModelsCyclicRelatives([$category], 'parent');
+        $this->assertCount(2, $allParents);
+        $this->assertEquals('Sport', $allParents[0]->title);
+        $this->assertEquals('News', $allParents[1]->title);
+
+        // Recursive relation
+        $category1 = new Category();
+        $category2 = new Category();
+        $category1->setLoadedRelatives('parent', $category2);
+        $category2->setLoadedRelatives('parent', $category1);
+        $allParents = Helpers::collectModelsCyclicRelatives([$category1], 'parent');
+        $this->assertCount(2, $allParents);
+        $this->assertEquals($category2, $allParents[0]);
+        $this->assertEquals($category1, $allParents[1]);
     }
 
     /**
