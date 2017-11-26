@@ -111,7 +111,7 @@ $importantUsers = $orm
 ```
 
 You can find more cool examples of using the query builder 
-[there](https://github.com/FinesseRus/QueryScribe#building-queries).
+[there](https://github.com/FinesseRus/QueryScribe/blob/master/docs/building-queries.md).
 
 #### Pagination
 
