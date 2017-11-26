@@ -143,6 +143,16 @@ class HelpersTest extends TestCase
         foreach ($users as $user) {
             $this->assertInstanceOf(User::class, $user);
         }
+
+        // Not unique relatives
+        $user = new User();
+        $post1 = new Post();
+        $post1->setLoadedRelatives('author', $user);
+        $post2 = new Post();
+        $post2->setLoadedRelatives('author', $user);
+        $users = Helpers::collectModelsRelatives([$post1, $post2], 'author');
+        $this->assertCount(1, $users);
+        $this->assertEquals($user, $users[0]);
     }
 
     /**

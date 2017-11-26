@@ -112,15 +112,16 @@ abstract class EqualFields implements RelationInterface
             if ($searchValue === null) {
                 continue;
             }
-            if (!is_scalar($searchValue)) {
-                throw new IncorrectModelException(sprintf(
-                    'The model `%s` field value expected to be scalar or null, %s given',
-                    $subjectModelField,
-                    is_object($searchValue) ? get_class($searchValue) : gettype($searchValue)
-                ));
+            if (is_scalar($searchValue)) {
+                $searchValues[$searchValue] = true;
+                continue;
             }
 
-            $searchValues[$searchValue] = true;
+            throw new IncorrectModelException(sprintf(
+                'The model `%s` field value expected to be scalar or null, %s given',
+                $subjectModelField,
+                is_object($searchValue) ? get_class($searchValue) : gettype($searchValue)
+            ));
         }
         $searchValues = array_keys($searchValues);
 

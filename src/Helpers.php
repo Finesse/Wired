@@ -89,7 +89,7 @@ class Helpers
     }
 
     /**
-     * Collects models related models to a plain array.
+     * Collects models related models to a plain array. The array has only unique models.
      *
      * @param ModelInterface[] $models The models
      * @param string $relation Relation name from which the relative models should be taken. If you need to collect
@@ -106,17 +106,20 @@ class Helpers
 
                 if (is_array($relatives)) {
                     foreach ($relatives as $relative) {
-                        $nextModels[] = $relative;
+                        // We can't index the relatives list by models identifiers because a model can have no identifier
+                        // We can't use array_unique because it uses not strict comparison
+                        // Using spl_object_hash is the faster than using in_array: https://3v4l.org/9B7nD
+                        $nextModels[spl_object_hash($relative)] = $relative;
                     }
                 } elseif ($relatives instanceof ModelInterface) {
-                    $nextModels[] = $relatives;
+                    $nextModels[spl_object_hash($relatives)] = $relatives;
                 }
             }
 
             $models = $nextModels;
         }
 
-        return $models;
+        return array_values($models);
     }
 
     /**
@@ -136,19 +139,22 @@ class Helpers
 
             foreach ($nextLevelModels as $index => $model) {
                 // We can't index the relatives list by models identifiers because a model can have no identifier
-                if (in_array($model, $relatives, true)) {
+                // Using spl_object_hash is the faster than using in_array: https://3v4l.org/9B7nD
+                $modelHash = spl_object_hash($model);
+
+                if (isset($relatives[$modelHash])) {
                     // If a related model is already in the relatives list, it's relatives are not collected the
                     // second time. It prevents an infinite loop.
                     unset($nextLevelModels[$index]);
                 } else {
-                    $relatives[] = $model;
+                    $relatives[$modelHash] = $model;
                 }
             }
 
             $models = $nextLevelModels;
         }
 
-        return $relatives;
+        return array_values($relatives);
     }
 
     /**
