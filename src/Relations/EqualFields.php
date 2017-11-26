@@ -104,7 +104,7 @@ abstract class EqualFields implements RelationInterface
         $objectModelField = $this->getObjectModelField();
 
         // Collecting the list of object model column values
-        $searchValues = Helpers::getObjectsPropertyValues($models, $subjectModelField);
+        $searchValues = Helpers::getObjectsPropertyValues($models, $subjectModelField, true);
 
         // Getting relative models
         if ($searchValues) {
@@ -166,10 +166,14 @@ abstract class EqualFields implements RelationInterface
             $this->checkObjectModel($model);
         }
 
-        $query->whereIn(
-            $this->getSubjectModelFieldFromQuery($query),
-            Helpers::getObjectsPropertyValues($models, $this->getObjectModelField())
-        );
+        $searchValues = Helpers::getObjectsPropertyValues($models, $this->getObjectModelField(), true);
+
+        if ($searchValues) {
+            $query->whereIn($this->getSubjectModelFieldFromQuery($query), $searchValues);
+        } else {
+            // If the relatives list is empty, the where criterion is equivalent to false
+            $query->whereRaw('0');
+        }
     }
 
     /**

@@ -256,5 +256,9 @@ class HelpersTest extends TestCase
             ['one' => 145, 'two' => null, 'three' => 'very good'],
             Helpers::getObjectsPropertyValues($objects, 'value')
         );
+        $this->assertEquals(
+            ['one' => 145, 'three' => 'very good'],
+            Helpers::getObjectsPropertyValues($objects, 'value', true)
+        );
     }
 }

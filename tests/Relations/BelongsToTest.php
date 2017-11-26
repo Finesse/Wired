@@ -53,6 +53,12 @@ class BelongsToTest extends TestCase
         $this->assertEquals(8, $posts[1]->key);
         $this->assertEquals(14, $posts[2]->key);
 
+        // Related with one of the given models (empty models list)
+        $query = $mapper->model(Post::class);
+        $relation->applyToQueryWhere($query, []);
+        $posts = $query->get();
+        $this->assertCount(0, $posts);
+
         // Relation with clause
         $query = $mapper->model(Post::class);
         $relation->applyToQueryWhere($query, function (ModelQuery $query) {

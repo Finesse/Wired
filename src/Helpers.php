@@ -237,15 +237,19 @@ class Helpers
      *
      * @param array $objects The objects
      * @param string $property The property name
+     * @param bool $ignoreNull Should null values be ignored?
      * @return mixed[] The property values. THe indexes are the same as in the input array.
      */
-    public static function getObjectsPropertyValues(array $objects, string $property): array
+    public static function getObjectsPropertyValues(array $objects, string $property, bool $ignoreNull = false): array
     {
         $values = [];
 
-        // foreach is faster than array_map: https://3v4l.org/0uGlg
         foreach ($objects as $index => $object) {
-            $values[$index] = $object->$property ?? null;
+            if (isset($object->$property)) {
+                $values[$index] = $object->$property;
+            } elseif (!$ignoreNull) {
+                $values[$index] = null;
+            }
         }
 
         return $values;

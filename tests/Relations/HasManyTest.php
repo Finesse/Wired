@@ -3,7 +3,6 @@
 namespace Finesse\Wired\Tests\Relations;
 
 use Finesse\MiniDB\Query;
-use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
@@ -50,6 +49,12 @@ class HasManyTest extends TestCase
         $this->assertCount(2, $users);
         $this->assertEquals('Charlie', $users[0]->name);
         $this->assertEquals('Frank', $users[1]->name);
+
+        // Related with one of the given models (empty models list)
+        $query = $mapper->model(User::class);
+        $relation->applyToQueryWhere($query, []);
+        $users = $query->get();
+        $this->assertCount(0, $users);
 
         // Relation with clause
         $query = $mapper->model(User::class);
