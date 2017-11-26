@@ -241,4 +241,20 @@ class HelpersTest extends TestCase
         $this->assertEquals('Hello 2-2', $user2->posts[0]->text);
         $this->assertEquals('New hello 2-3', $user2->posts[1]->text);
     }
+
+    /**
+     * Tests the `getObjectsPropertyValues` method
+     */
+    public function testGetObjectsPropertyValues()
+    {
+        $objects = ['one' => new \stdClass(), 'two' => new \stdClass(), 'three' => new \stdClass()];
+        $objects['one']->value = 145;
+        $objects['two']->title = 'miscellaneous';
+        $objects['three']->value = 'very good';
+        $objects['three']->title = 'spoon';
+        $this->assertEquals(
+            ['one' => 145, 'two' => null, 'three' => 'very good'],
+            Helpers::getObjectsPropertyValues($objects, 'value')
+        );
+    }
 }

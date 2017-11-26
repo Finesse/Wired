@@ -36,6 +36,8 @@ If you need a new database system support please implement it [there](https://gi
 
 The documentation is located in [the `docs` directory](docs/getting-started.md).
 
+Also there are a lot of PHPDoc comments in the code.
+
 
 ## Versions compatibility
 

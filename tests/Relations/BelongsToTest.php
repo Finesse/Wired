@@ -144,18 +144,6 @@ class BelongsToTest extends TestCase
 
         // Empty models list
         $relation->loadRelatives($mapper, 'author', []);
-
-        // Incorrect key field value
-        $post = new Post();
-        $post->author_id = [1, 2];
-        $this->assertException(IncorrectModelException::class, function () use ($relation, $mapper, $post) {
-            $relation->loadRelatives($mapper, 'author', [$post]);
-        }, function (IncorrectModelException $exception) {
-            $this->assertEquals(
-                'The model `author_id` field value expected to be scalar or null, array given',
-                $exception->getMessage()
-            );
-        });
     }
 
     /**

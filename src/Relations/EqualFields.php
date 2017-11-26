@@ -2,7 +2,6 @@
 
 namespace Finesse\Wired\Relations;
 
-use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
@@ -104,29 +103,11 @@ abstract class EqualFields implements RelationInterface
         $subjectModelField = $this->getSubjectModelField(get_class($sampleModel));
         $objectModelField = $this->getObjectModelField();
 
-        // Collecting the list of unique object model column values
-        $searchValues = [];
-        foreach ($models as $model) {
-            $searchValue = $model->$subjectModelField;
-
-            if ($searchValue === null) {
-                continue;
-            }
-            if (is_scalar($searchValue)) {
-                $searchValues[$searchValue] = true;
-                continue;
-            }
-
-            throw new IncorrectModelException(sprintf(
-                'The model `%s` field value expected to be scalar or null, %s given',
-                $subjectModelField,
-                is_object($searchValue) ? get_class($searchValue) : gettype($searchValue)
-            ));
-        }
-        $searchValues = array_keys($searchValues);
+        // Collecting the list of object model column values
+        $searchValues = Helpers::getObjectsPropertyValues($models, $subjectModelField);
 
         // Getting relative models
-        if (!empty($searchValues)) {
+        if ($searchValues) {
             $query = $mapper->model($this->objectModelClass);
             if ($constraint) {
                 $query = $constraint($query) ?? $query;
@@ -181,14 +162,14 @@ abstract class EqualFields implements RelationInterface
      */
     protected function applyToQueryWhereWithModels(ModelQuery $query, array $models)
     {
-        $values = [];
-
         foreach ($models as $model) {
             $this->checkObjectModel($model);
-            $values[] = $model->{$this->getObjectModelField()};
         }
 
-        $query->whereIn($this->getSubjectModelFieldFromQuery($query), $values);
+        $query->whereIn(
+            $this->getSubjectModelFieldFromQuery($query),
+            Helpers::getObjectsPropertyValues($models, $this->getObjectModelField())
+        );
     }
 
     /**

@@ -147,17 +147,5 @@ class HasManyTest extends TestCase
         $user = new User();
         $relation->loadRelatives($mapper, 'posts', [$user]);
         $this->assertCount(0, $user->posts);
-
-        // Incorrect key field value
-        $user = new User();
-        $user->id = [1, 2];
-        $this->assertException(IncorrectModelException::class, function () use ($relation, $mapper, $user) {
-            $relation->loadRelatives($mapper, 'posts', [$user]);
-        }, function (IncorrectModelException $exception) {
-            $this->assertEquals(
-                'The model `id` field value expected to be scalar or null, array given',
-                $exception->getMessage()
-            );
-        });
     }
 }

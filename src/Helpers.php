@@ -231,4 +231,23 @@ class Helpers
             );
         }
     }
+
+    /**
+     * Convert an array of objects to an array of the objects property values.
+     *
+     * @param array $objects The objects
+     * @param string $property The property name
+     * @return mixed[] The property values. THe indexes are the same as in the input array.
+     */
+    public static function getObjectsPropertyValues(array $objects, string $property): array
+    {
+        $values = [];
+
+        // foreach is faster than array_map: https://3v4l.org/0uGlg
+        foreach ($objects as $index => $object) {
+            $values[$index] = $object->$property ?? null;
+        }
+
+        return $values;
+    }
 }
