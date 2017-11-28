@@ -2,6 +2,16 @@
 
 namespace Finesse\Wired;
 
+use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
+use Finesse\MiniDB\Exceptions\ExceptionInterface as DBException;
+use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
+use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
+use Finesse\MiniDB\Exceptions\InvalidReturnValueException as DBInvalidReturnValueException;
+use Finesse\Wired\Exceptions\DatabaseException;
+use Finesse\Wired\Exceptions\ExceptionInterface;
+use Finesse\Wired\Exceptions\IncorrectQueryException;
+use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
 use Finesse\Wired\Exceptions\NotModelException;
 
 /**
@@ -253,5 +263,35 @@ class Helpers
         }
 
         return $values;
+    }
+
+    /**
+     * Turns the given exception to a this package exception (if possible).
+     *
+     * @param \Throwable $exception
+     * @return ExceptionInterface|\Throwable
+     */
+    public static function wrapException(\Throwable $exception): \Throwable
+    {
+        if ($exception instanceof ExceptionInterface) {
+            return $exception;
+        }
+
+        if ($exception instanceof DBException) {
+            if ($exception instanceof DBInvalidArgumentException) {
+                return new InvalidArgumentException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+            if ($exception instanceof DBInvalidReturnValueException) {
+                return new InvalidReturnValueException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+            if ($exception instanceof DBIncorrectQueryException) {
+                return new IncorrectQueryException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+            if ($exception instanceof DBDatabaseException) {
+                return new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+        }
+
+        return $exception;
     }
 }

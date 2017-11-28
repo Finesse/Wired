@@ -141,21 +141,27 @@ class ModelQueryTest extends TestCase
         $this->assertCount(2, $query->where);
         $this->assertCount(2, $query->where[0]->criteria);
         $this->assertEquals(User::getTable(), $query->table);
+    }
 
-        // `resolveModelSubQueryClosure` with different models
-        $modelQuery = $mapper->model(User::class);
-        $subQuery = $modelQuery->resolveModelSubQueryClosure(Post::class, function (ModelQuery $query) {
-            $this->assertEquals(Post::class, $query->getModelClass());
-        });
-        $this->assertInstanceOf(Query::class, $subQuery);
-        $this->assertAttributes(['table' => Post::getTable(), 'tableAlias' => null], $subQuery);
+    /**
+     * Tests the `makeModelSubQuery` method
+     */
+    public function testMakeModelSubQuery()
+    {
+        $mapper = $this->makeMockDatabase();
 
-        // `resolveModelSubQueryClosure` with same model
-        $subQuery = $modelQuery->resolveModelSubQueryClosure(User::class, function (ModelQuery $query) {
-            $this->assertEquals(User::class, $query->getModelClass());
-        });
-        $this->assertInstanceOf(Query::class, $subQuery);
-        $this->assertAttributes(['table' => User::getTable(), 'tableAlias' => '__wired_reserved_alias_0'], $subQuery);
+        // With different models
+        $query = $mapper->model(User::class);
+        $subQuery = $query->makeModelSubQuery(Post::class);
+        $this->assertInstanceOf(ModelQuery::class, $subQuery);
+        $this->assertAttributeEquals(Post::getTable(), 'table', $subQuery->getBaseQuery());
+        $this->assertNotEquals($query->getTableIdentifier(), $subQuery->getTableIdentifier());
+
+        // With same model
+        $subQuery = $query->makeModelSubQuery(User::class);
+        $this->assertInstanceOf(ModelQuery::class, $subQuery);
+        $this->assertAttributeEquals(User::getTable(), 'table', $subQuery->getBaseQuery());
+        $this->assertNotEquals($query->getTableIdentifier(), $subQuery->getTableIdentifier());
     }
 
     /**

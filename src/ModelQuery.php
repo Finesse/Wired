@@ -4,22 +4,20 @@ namespace Finesse\Wired;
 
 use Finesse\MiniDB\Query;
 use Finesse\MiniDB\QueryProxy;
-use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
-use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
-use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\QueryScribe\Query as OriginalQuery;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 
 /**
  * Query builder for targeting a model.
  *
- * All the methods throw Finesse\Wired\Exceptions\InvalidArgumentException exceptions if not specified explicitly.
+ * All the methods throw Finesse\Wired\Exceptions\ExceptionInterface.
  *
  * @author Surgie
  */
@@ -38,8 +36,12 @@ class ModelQuery extends QueryProxy
      */
     public function __construct(Query $baseQuery, string $modelClass = null)
     {
-        parent::__construct($baseQuery);
-        $this->modelClass = $modelClass;
+        try {
+            parent::__construct($baseQuery);
+            $this->modelClass = $modelClass;
+        } catch (\Throwable $exception) {
+            $this->handleException($exception);
+        }
     }
 
     /**
@@ -52,6 +54,8 @@ class ModelQuery extends QueryProxy
     }
 
     /**
+     * @ignore Makes this method be public
+     *
      * {@inheritDoc}
      * @return Query
      */
@@ -72,16 +76,20 @@ class ModelQuery extends QueryProxy
      */
     public function find($id)
     {
-        if ($this->modelClass === null) {
-            throw new IncorrectQueryException('This query is not a model query');
-        }
+        try {
+            if ($this->modelClass === null) {
+                throw new IncorrectQueryException('This query is not a model query');
+            }
 
-        $idField = $this->modelClass::getIdentifierField();
+            $idField = $this->modelClass::getIdentifierField();
 
-        if (is_array($id)) {
-            return (clone $this)->whereIn($idField, $id)->get();
-        } else {
-            return (clone $this)->where($idField, $id)->first();
+            if (is_array($id)) {
+                return (clone $this)->whereIn($idField, $id)->get();
+            } else {
+                return (clone $this)->where($idField, $id)->first();
+            }
+        } catch (\Throwable $exception) {
+            return $this->handleException($exception);
         }
     }
 
@@ -100,6 +108,7 @@ class ModelQuery extends QueryProxy
      * @throws RelationException
      * @throws NotModelException
      * @throws InvalidArgumentException
+     * @throws InvalidReturnValueException
      * @throws IncorrectQueryException
      * @throws IncorrectModelException
      */
@@ -109,30 +118,34 @@ class ModelQuery extends QueryProxy
         bool $not = false,
         string $appendRule = 'AND'
     ): self {
-        if ($this->modelClass === null) {
-            throw new IncorrectQueryException('This query is not a model query');
-        }
+        try {
+            if ($this->modelClass === null) {
+                throw new IncorrectQueryException('This query is not a model query');
+            }
 
-        // Resolve the chained relations
-        $relationsChain = explode('.', $relationName, 2);
-        if (count($relationsChain) > 1) {
-            $relationName = $relationsChain[0];
-            $target = function (self $query) use ($relationsChain, $target) {
-                $query->whereRelation($relationsChain[1], $target);
+            // Resolve the chained relations
+            $relationsChain = explode('.', $relationName, 2);
+            if (count($relationsChain) > 1) {
+                $relationName = $relationsChain[0];
+                $target = function (self $query) use ($relationsChain, $target) {
+                    $query->whereRelation($relationsChain[1], $target);
+                };
+            }
+
+            // Get the relation object
+            $relation = $this->modelClass::getRelationOrFail($relationName);
+
+            // Add the relation criterion
+            $applyRelation = function (self $query) use ($relation, $target) {
+                $relation->applyToQueryWhere($query, $target);
             };
-        }
-
-        // Get the relation object
-        $relation = $this->modelClass::getRelationOrFail($relationName);
-
-        // Add the relation criterion
-        $applyRelation = function (self $query) use ($relation, $target) {
-            $relation->applyToQueryWhere($query, $target);
-        };
-        if ($not) {
-            return $this->whereNot($applyRelation, $appendRule);
-        } else {
-            return $this->where($applyRelation, null, null, $appendRule);
+            if ($not) {
+                return $this->whereNot($applyRelation, $appendRule);
+            } else {
+                return $this->where($applyRelation, null, null, $appendRule);
+            }
+        } catch (\Throwable $exception) {
+            return $this->handleException($exception);
         }
     }
 
@@ -175,46 +188,44 @@ class ModelQuery extends QueryProxy
      */
     public function resolveCriteriaGroupClosure(\Closure $callback): OriginalQuery
     {
-        $query = new static($this->baseQuery->makeCopyForCriteriaGroup(), $this->modelClass);
-        return $this->resolveClosure($callback, $query);
+        try {
+            return (new static($this->baseQuery->makeCopyForCriteriaGroup(), $this->modelClass))
+                ->applyCallback($callback)
+                ->baseQuery;
+        } catch (\Throwable $exception) {
+            return $this->handleException($exception);
+        }
     }
 
     /**
-     * Resolves a closure given instead of a subquery. Gives a query with applied model table (with prevented table
-     * names conflicts) to the first argument of the callback.
+     * Makes an empty model query object which can be used as a subquery for this query. If this query model class and
+     * the target model class are the same, the subquery receives an alias for the table.
      *
      * @param string|ModelInterface $modelClass The model class name
-     * @param \Closure $callback
-     * @return Query
+     * @return ModelQuery
      * @throws NotModelException
      */
-    public function resolveModelSubQueryClosure(string $modelClass, \Closure $callback): OriginalQuery
+    public function makeModelSubQuery(string $modelClass): self
     {
-        Helpers::checkModelClass('The given model class', $modelClass);
+        try {
+            Helpers::checkModelClass('The given model class', $modelClass);
 
-        $queryTableName = $this->baseQuery->getTableIdentifier();
-        $subQueryTable = $modelClass::getTable();
-        $subQueryTableAlias = null;
+            $queryTableName = $this->baseQuery->getTableIdentifier();
+            $subQueryTable = $modelClass::getTable();
+            $subQueryTableAlias = null;
 
-        if ($subQueryTable === $queryTableName) {
-            $counter = 0;
-            do {
-                $subQueryTableAlias = '__wired_reserved_alias_'.$counter++;
-            } while ($subQueryTableAlias === $queryTableName);
+            if ($subQueryTable === $queryTableName) {
+                $counter = 0;
+                do {
+                    $subQueryTableAlias = '__wired_reserved_alias_'.$counter++;
+                } while ($subQueryTableAlias === $queryTableName);
+            }
+
+            return (new static($this->baseQuery->makeCopyForSubQuery(), $modelClass))
+                ->table($subQueryTable, $subQueryTableAlias);
+        } catch (\Throwable $exception) {
+            return $this->handleException($exception);
         }
-
-        return $this->resolveSubQueryClosure(function (
-            self $subQuery
-        ) use (
-            $modelClass,
-            $subQueryTable,
-            $subQueryTableAlias,
-            $callback
-        ) {
-            $subQuery->modelClass = $modelClass;
-            $subQuery->table($subQueryTable, $subQueryTableAlias);
-            return $callback($subQuery);
-        });
     }
 
     /**
@@ -234,18 +245,12 @@ class ModelQuery extends QueryProxy
      * {@inheritdoc}
      * @throws ExceptionInterface|\Throwable
      */
-    protected function handleBaseQueryException(\Throwable $exception)
+    protected function handleException(\Throwable $exception)
     {
-        if ($exception instanceof DBInvalidArgumentException) {
-            throw new InvalidArgumentException($exception->getMessage(), $exception->getCode(), $exception);
+        try {
+            return parent::handleException($exception);
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
         }
-        if ($exception instanceof DBIncorrectQueryException) {
-            throw new IncorrectQueryException($exception->getMessage(), $exception->getCode(), $exception);
-        }
-        if ($exception instanceof DBDatabaseException) {
-            throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
-        }
-
-        return parent::handleBaseQueryException($exception);
     }
 }

@@ -110,7 +110,7 @@ abstract class EqualFields implements RelationInterface
         if ($searchValues) {
             $query = $mapper->model($this->objectModelClass);
             if ($constraint) {
-                $query = $constraint($query) ?? $query;
+                $query = $query->applyCallback($constraint);
             }
             // whereIn is applied after to make sure that the relation closure is applied with the AND rule
             $relatives = $query->whereIn($this->getObjectModelField(), $searchValues)->get();
@@ -186,15 +186,19 @@ abstract class EqualFields implements RelationInterface
      */
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
+        $subQuery = $query->makeModelSubQuery($this->objectModelClass);
+        if ($clause) {
+            $subQuery = $subQuery->applyCallback($clause);
+        }
+
         // whereColumn is applied after to make sure that the relation closure is applied with the AND rule
-        $subQuery = $query->resolveModelSubQueryClosure($this->objectModelClass, $clause ?? function () {});
         $subQuery->whereColumn(
             $query->getTableIdentifier().'.'.$this->getSubjectModelFieldFromQuery($query),
             '=',
             $subQuery->getTableIdentifier().'.'.$this->getObjectModelField()
         );
 
-        $query->whereExists($subQuery);
+        $query->whereExists($subQuery->getBaseQuery());
     }
 
     /**

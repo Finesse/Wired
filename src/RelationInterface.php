@@ -6,6 +6,7 @@ use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 
@@ -27,6 +28,7 @@ interface RelationInterface
      * @throws RelationException
      * @throws NotModelException
      * @throws InvalidArgumentException
+     * @throws InvalidReturnValueException
      * @throws IncorrectModelException
      * @throws IncorrectQueryException
      */
@@ -44,6 +46,7 @@ interface RelationInterface
      *     the closure". Null means "no constraint".
      * @throws DatabaseException
      * @throws IncorrectModelException
+     * @throws InvalidReturnValueException
      */
     public function loadRelatives(Mapper $mapper, string $name, array $models, \Closure $constraint = null);
 }

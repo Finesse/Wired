@@ -3,7 +3,6 @@
 namespace Finesse\Wired;
 
 use Finesse\MiniDB\Database;
-use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
@@ -42,8 +41,8 @@ class Mapper
     {
         try {
             return new static(Database::create($config));
-        } catch (DBDatabaseException $exception) {
-            throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
         }
     }
 
@@ -182,10 +181,10 @@ class Mapper
                     ->table($model::getTable())
                     ->insertGetId($row, $model->$identifierField);
             }
-        } catch (DBDatabaseException $exception) {
-            throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
         } catch (DBInvalidArgumentException $exception) {
             throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
         }
     }
 
@@ -215,10 +214,10 @@ class Mapper
 
         try {
             $this->database->table($sampleModel::getTable())->whereIn($identifierField, $ids)->delete();
-        } catch (DBDatabaseException $exception) {
-            throw new DatabaseException($exception->getMessage(), $exception->getCode(), $exception);
         } catch (DBInvalidArgumentException $exception) {
             throw new IncorrectModelException($exception->getMessage(), $exception->getCode(), $exception);
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
         }
     }
 
