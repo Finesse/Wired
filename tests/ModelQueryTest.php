@@ -6,13 +6,17 @@ use Finesse\MiniDB\Exceptions\DatabaseException as DBDatabaseException;
 use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\MiniDB\Query;
+use Finesse\QueryScribe\ClosureResolverInterface;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
+use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
+use Finesse\QueryScribe\Query as OriginalQuery;
 
 /**
  * Tests the ModelQuery class
@@ -69,6 +73,9 @@ class ModelQueryTest extends TestCase
             public function delete(): int {
                 throw new \RuntimeException();
             }
+            public function makeCopyForCriteriaGroup(): OriginalQuery {
+                throw new \InvalidArgumentException();
+            }
         };
         $modelQuery = new ModelQuery($query);
 
@@ -81,8 +88,27 @@ class ModelQueryTest extends TestCase
         $this->assertException(DatabaseException::class, function () use ($modelQuery) {
             $modelQuery->get();
         });
+        $this->assertException(InvalidReturnValueException::class, function () use ($modelQuery) {
+            $modelQuery->whereExists(function () {
+                return 'boo';
+            });
+        });
         $this->assertException(\RuntimeException::class, function () use ($modelQuery) {
             $modelQuery->delete();
+        });
+        $this->assertException(\InvalidArgumentException::class, function () use ($modelQuery) {
+            $modelQuery->where(function () {});
+        });
+
+        // Error in the constructor
+        $query = new class extends Query {
+            public function __construct() {}
+            public function setClosureResolver(ClosureResolverInterface $closureResolver = null) {
+                throw new DBIncorrectQueryException();
+            }
+        };
+        $this->assertException(IncorrectQueryException::class, function () use ($query) {
+            new ModelQuery($query);
         });
     }
 
@@ -162,6 +188,11 @@ class ModelQueryTest extends TestCase
         $this->assertInstanceOf(ModelQuery::class, $subQuery);
         $this->assertAttributeEquals(User::getTable(), 'table', $subQuery->getBaseQuery());
         $this->assertNotEquals($query->getTableIdentifier(), $subQuery->getTableIdentifier());
+
+        // Wrong model name
+        $this->assertException(NotModelException::class, function () use ($query) {
+            $query->makeModelSubQuery(self::class);
+        });
     }
 
     /**
