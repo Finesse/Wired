@@ -5,4 +5,4 @@ namespace Finesse\Wired\Exceptions;
 /**
  * {@inheritDoc}
  */
-class InvalidReturnValueException extends \RuntimeException implements ExceptionInterface {}
+class InvalidReturnValueException extends \LogicException implements ExceptionInterface {}
