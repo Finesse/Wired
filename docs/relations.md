@@ -3,6 +3,10 @@
 
 # Relations
 
+Ralating models is describing family connections between models, 
+e.g. claiming that a user can have any number of posts and a post can have not more then one author.
+Related models can be easily retrieved from connections.
+
 ## Defining relations
 
 ### One to many

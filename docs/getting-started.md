@@ -5,7 +5,7 @@
 
 ## Installation
 
-You need [composer](https://getcomposer.org) to use this library. Run in a console:
+You need [Composer](https://getcomposer.org) to use this library. Run in a console:
                                                                   
 ```bash
 composer require finesse/wired
@@ -123,7 +123,7 @@ First install Pagerfanta using [composer](https://getcomposer.org) by running in
 composer require pagerfanta/pagerfanta
 ```
 
-Then make a query from which models should be taken:
+Then make a query from which the models should be taken:
 
 ```php
 $query = $orm
@@ -161,7 +161,7 @@ $database
     ->orderBy('id')
     ->chunk(100, function ($users) {
         foreach ($users as $user) {
-            // Process the user here
+            // Process a model here
         }
     });
 ```
