@@ -47,7 +47,7 @@ $orm = new Mapper($database);
 ```
 
 You can get more information about creating a `Database` instance 
-[there](https://github.com/FinesseRus/MiniDB#getting-started).
+[there](https://github.com/Finesse/MiniDB#getting-started).
 
 ### Models
 
@@ -111,7 +111,7 @@ $importantUsers = $orm
 ```
 
 You can find more cool examples of using the query builder 
-[there](https://github.com/FinesseRus/QueryScribe/blob/master/docs/building-queries.md).
+[there](https://github.com/Finesse/QueryScribe/blob/master/docs/building-queries.md).
 
 #### Pagination
 
