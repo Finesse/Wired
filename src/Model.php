@@ -139,7 +139,7 @@ abstract class Model implements ModelInterface
      */
     public static function getRelation(string $name)
     {
-        if (!doesMethodExist(static::class, $name)) {
+        if (!Helpers::canCallMethod(static::class, $name)) {
             return null;
         }
 
@@ -211,28 +211,6 @@ abstract class Model implements ModelInterface
      */
     protected static function getFields(): array
     {
-        return getObjectProperties(static::createEmpty());
+        return array_keys(Helpers::getObjectProperties(static::createEmpty()));
     }
-}
-
-/**
- * Returns the list of not static object properties names. Moved out of the Model class to filter out not public
- * properties.
- *
- * @param object $object
- * @return string[]
- */
-function getObjectProperties($object)
-{
-    return array_keys(get_object_vars($object));
-}
-
-/**
- * Does the same as the `method_exists` function. Moved out of the Model class to filter out not public methods.
- *
- * @see method_exists
- */
-function doesMethodExist($object, string $name)
-{
-    return method_exists($object, $name);
 }

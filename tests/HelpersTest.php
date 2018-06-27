@@ -261,4 +261,43 @@ class HelpersTest extends TestCase
             Helpers::getObjectsPropertyValues($objects, 'value', true)
         );
     }
+
+    /**
+     * Tests the `getObjectProperties` method
+     */
+    public function testGetObjectProperties()
+    {
+        $object = new class {
+            public $public = 'foo';
+            protected $protected = 'bar';
+            private $private = 'baz';
+        };
+        $object->public2 = 11;
+
+        $this->assertEquals(['public' => 'foo', 'public2' => 11], Helpers::getObjectProperties($object));
+    }
+
+    /**
+     * Tests the `doesMethodExist` method
+     */
+    public function testDoesMethodExist()
+    {
+        $object = new class {
+            public function foo() {}
+            protected function bar() {}
+            private function baq() {}
+            public static function fooStatic() {}
+            protected static function barStatic() {}
+            private static function baqStatic() {}
+        };
+
+        $this->assertTrue(Helpers::canCallMethod($object, 'foo'));
+        $this->assertFalse(Helpers::canCallMethod($object, 'bar'));
+        $this->assertFalse(Helpers::canCallMethod($object, 'baq'));
+        $this->assertFalse(Helpers::canCallMethod($object, 'boo'));
+        $this->assertTrue(Helpers::canCallMethod(get_class($object), 'fooStatic'));
+        $this->assertFalse(Helpers::canCallMethod(get_class($object), 'barStatic'));
+        $this->assertFalse(Helpers::canCallMethod(get_class($object), 'baqStatic'));
+        $this->assertFalse(Helpers::canCallMethod(get_class($object), 'booStatic'));
+    }
 }

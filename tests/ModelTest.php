@@ -43,6 +43,8 @@ class ModelTest extends TestCase
             public $foo;
             public $bar = 5;
             public $baz = 'zzz';
+            protected $secret1 = 'qwerty';
+            private $secret2 = 12345;
             public static function getTable(): string {
                 return 'test';
             }
@@ -80,12 +82,16 @@ class ModelTest extends TestCase
             public static function notARelation() {
                 return 'foo bar';
             }
+            protected static function notAPublicMethod() {
+                return new BelongsTo(User::class, 'bar');
+            }
         };
 
         $this->assertInstanceOf(RelationInterface::class, $model::getRelation('parent'));
         $this->assertInstanceOf(RelationInterface::class, $model::getRelationOrFail('parent'));
         $this->assertNull($model::getRelation('notARelation'));
-        $this->assertNull($model::getRelation('foo'));
+        $this->assertNull($model::getRelation('notAPublicMethod'));
+        $this->assertNull($model::getRelation('notExistingMethod'));
 
         $this->assertException(RelationException::class, function () use ($model) {
             $model::getRelationOrFail('fubar');

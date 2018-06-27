@@ -294,4 +294,30 @@ class Helpers
 
         return $exception;
     }
+
+    /**
+     * Gets object public properties names and values
+     *
+     * @param object $object
+     * @return array The keys are the properties names and the values are the properties values
+     */
+    public static function getObjectProperties($object): array
+    {
+        return get_object_vars($object);
+    }
+
+    /**
+     * Checks whether an object method can be called (exists and public).
+     *
+     * Warning! It returns true if a class name and a not-static method name is given. If you know how to fix it, PR or
+     * issue is welcome.
+     *
+     * @param object|string $object An object or a class name
+     * @param string $name The method name
+     * @return bool
+     */
+    public static function canCallMethod($object, string $name): bool
+    {
+        return is_callable([$object, $name]);
+    }
 }
