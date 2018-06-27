@@ -230,6 +230,7 @@ class Mapper
      *     load a subrelations too, add their names separated by a dot.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
+     * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
      * @return ModelInterface[] The models from the penultimate chain level. If the chain has a single relation, the
      *     original models list is returned.
      * @throws RelationException
@@ -241,7 +242,7 @@ class Mapper
         string $relationName,
         \Closure $clause = null,
         bool $onlyMissing = false
-    ) {
+    ): array {
         $relationsChain = explode('.', $relationName);
 
         for ($i = 0, $l = count($relationsChain); $i < $l; ++$i) {
@@ -255,7 +256,7 @@ class Mapper
             $relation = $sampleModel::getRelationOrFail($relationName);
             $modelsToLoad = $models;
 
-            // Filter out the models (for sending to the relatives loading) which relatives are already loaded
+            // Filter out the models whose relatives are already loaded (their relatives won't be loaded)
             if (!$isLastRelation || $onlyMissing) {
                 $modelsToLoad = array_filter($modelsToLoad, function (ModelInterface $model) use ($relationName) {
                     return !$model->doesHaveLoadedRelatives($relationName);
@@ -282,6 +283,7 @@ class Mapper
      *     relations names separated by a dot.
      * @param \Closure|null $clause Relation constraint. Closure means "the relative models must fit the clause in
      *     the closure". Null means "no constraint".
+     * @param bool $onlyMissing Skip loading relatives for a model if the model already has loaded relatives
      * @throws RelationException
      * @throws DatabaseException
      * @throws IncorrectModelException
