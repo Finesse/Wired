@@ -72,7 +72,7 @@ class User extends Model
 }
 ```
 
-All the table fields must be specified as the public properties of the class. All the public properties must be a table
+All the table fields must be specified as the public properties of the class. All the public properties must be table
 column names.
 
 
@@ -115,7 +115,7 @@ You can find more cool examples of using the query builder
 
 #### Pagination
 
-We suggest [Pagerfanta](https://github.com/whiteoctober/Pagerfanta) to easily make pagination.
+We suggest [Pagerfanta](https://github.com/whiteoctober/Pagerfanta) to make a pagination easily.
 
 First install Pagerfanta using [composer](https://getcomposer.org) by running in a console:
 

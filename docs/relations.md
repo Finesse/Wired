@@ -123,7 +123,7 @@ Load relative models with relative submodels:
 ```php
 $orm->load($post, 'author.posts.category'); // Relations are divided by dot
 
-foreach ($post->author->post as $sameAuthorPost) {
+foreach ($post->author->posts as $sameAuthorPost) {
     $category = $sameAuthorPost->category;
 }
 ```
