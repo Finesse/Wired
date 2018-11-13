@@ -142,7 +142,9 @@ class ModelQuery extends QueryProxy
             if ($not) {
                 return $this->whereNot($applyRelation, $appendRule);
             } else {
-                return $this->where($applyRelation, null, null, $appendRule);
+                return strtoupper($appendRule) === 'AND'
+                    ? $this->where($applyRelation)
+                    : $this->orWhere($applyRelation);
             }
         } catch (\Throwable $exception) {
             return $this->handleException($exception);
@@ -190,7 +192,7 @@ class ModelQuery extends QueryProxy
     {
         try {
             return (new static($this->baseQuery->makeCopyForCriteriaGroup(), $this->modelClass))
-                ->applyCallback($callback)
+                ->apply($callback)
                 ->baseQuery;
         } catch (\Throwable $exception) {
             return $this->handleException($exception);
