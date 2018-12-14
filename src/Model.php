@@ -42,7 +42,7 @@ abstract class Model implements ModelInterface
             return $relation->associate($relationName, $this, $model);
         }
 
-        throw new RelationException('Associating is not available for the `'.$relationName.'` relation');
+        throw new RelationException("Associating is not available for the `$relationName` relation");
     }
 
     /**
@@ -61,7 +61,7 @@ abstract class Model implements ModelInterface
             return $relation->dissociate($relationName, $this);
         }
 
-        throw new RelationException('Dissociating is not available for the `'.$relationName.'` relation');
+        throw new RelationException("Dissociating is not available for the `$relationName` relation");
     }
 
     /**

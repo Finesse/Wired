@@ -2,12 +2,8 @@
 
 namespace Finesse\Wired\Tests\Relations;
 
-use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\IncorrectModelException;
-use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
-use Finesse\Wired\Exceptions\NotModelException;
-use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\ModelQuery;
 use Finesse\Wired\Tests\ModelsForTests\Category;
 use Finesse\Wired\Tests\ModelsForTests\Post;
@@ -83,15 +79,8 @@ class BelongsToTest extends TestCase
         // Wrong specified model
         $relation = Post::author();
         $query = $mapper->model(Post::class);
-        $this->assertException(RelationException::class, function () use ($relation, $query) {
+        $this->assertException(IncorrectModelException::class, function () use ($relation, $query) {
             $relation->applyToQueryWhere($query, new Category());
-        }, function (RelationException $exception) {
-            $this->assertStringStartsWith('The given model ', $exception->getMessage());
-        });
-        $this->assertException(NotModelException::class, function () use ($relation, $query) {
-            $relation->applyToQueryWhere($query, [1, 2, 3]);
-        }, function (NotModelException $exception) {
-            $this->assertStringStartsWith('The given value ', $exception->getMessage());
         });
 
         // Wrong argument
@@ -99,16 +88,6 @@ class BelongsToTest extends TestCase
             $relation->applyToQueryWhere($query, 'Jack');
         }, function (InvalidArgumentException $exception) {
             $this->assertStringStartsWith('The constraint argument expected to be ', $exception->getMessage());
-        });
-
-        // Query without model
-        $query = new ModelQuery(new class extends Query {
-            public function __construct() {}
-        });
-        $this->assertException(IncorrectQueryException::class, function () use ($relation, $query) {
-            $relation->applyToQueryWhere($query);
-        }, function (IncorrectQueryException $exception) {
-            $this->assertEquals('The given query doesn\'t have a context model', $exception->getMessage());
         });
     }
 
@@ -183,9 +162,9 @@ class BelongsToTest extends TestCase
         $this->assertNull($post->author_id);
         $this->assertNull($post->author);
 
-        $this->assertException(RelationException::class, function () use ($relation, $post) {
+        $this->assertException(IncorrectModelException::class, function () use ($relation, $post) {
             $relation->associate('author', $post, new Category());
-        }, function (RelationException $exception) {
+        }, function (IncorrectModelException $exception) {
             $this->assertStringStartsWith('The given model ', $exception->getMessage());
         });
 

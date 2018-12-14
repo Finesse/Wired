@@ -68,6 +68,35 @@ If you need the `user_id` field to point to another `User` field, pass it's name
 return new BelongsTo(User::class, 'user_email', 'email');
 ```
 
+### Many to many
+
+Add a method to a model class to tell the ORM that a model instance belongs to many related instances and vice versa:
+
+```php
+use Finesse\Wired\Model;
+use Finesse\Wired\Relations\BelongsToMany;
+
+class Post extends Model
+{
+    // ...
+
+    public static function tags()
+    {
+        return new BelongsToMany(Tag::class, 'post_id', 'post_tags', 'tag_id');
+    }
+}
+```
+
+The `tags` method name is the relation name. You can set any name. The relation above tells that there is a `post_tags`
+table (called "pivot") that has two fields: `post_id` which contains a post identifier and `tag_id` which contains a tag
+identifier.
+
+If the pivot table fields point to specific models fields (not the identifier fields), pass the field names as arguments:
+
+```php
+return new BelongsToMany(Tag::class, 'post_uuid', 'post_tags', 'tag_name', 'uuid', 'name');
+```
+
 
 ## Getting related models
 
@@ -148,7 +177,7 @@ $userPosts = $orm
     ->get();
 ```
 
-Query all models related with on of the given models:
+Query all models related with the given models:
 
 ```php
 $specificUsers = $orm->model(User::class)->find([5, 15, 16]);
@@ -272,4 +301,4 @@ $orm->loadCyclic($category, 'parent');
  */
 ```
 
-The other `load` method arguments are supported by the `loadCyclic` method.
+The `loadCyclic` method supports all the other arguments supported by the `load` method.

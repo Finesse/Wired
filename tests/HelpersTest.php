@@ -2,6 +2,9 @@
 
 namespace Finesse\Wired\Tests;
 
+use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\IncorrectQueryException;
+use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Helpers;
 use Finesse\Wired\ModelInterface;
@@ -30,6 +33,25 @@ class HelpersTest extends TestCase
                 'Test value (foo bar) is not a model class implementation name (Finesse\Wired\ModelInterface)',
                 $exception->getMessage()
             );
+        });
+    }
+
+    /**
+     * Tests the `checkModelObjectClass` method
+     */
+    public function testCheckModelObjectClass()
+    {
+        $this->assertEmpty(Helpers::checkModelObjectClass(new User, User::class));
+
+        $this->assertException(IncorrectModelException::class, function () {
+            Helpers::checkModelObjectClass(new User, Post::class);
+        });
+
+        $this->assertException(NotModelException::class, function () {
+            Helpers::checkModelObjectClass(new \stdClass, User::class);
+        });
+        $this->assertException(NotModelException::class, function () {
+            Helpers::checkModelObjectClass('Hello', User::class);
         });
     }
 
@@ -107,6 +129,31 @@ class HelpersTest extends TestCase
         $this->assertEquals(7, $groups['Bill'][1]->id);
         $this->assertCount(1, $groups['Ivan']);
         $this->assertEquals(4, $groups['Ivan'][0]->id);
+    }
+
+    /**
+     * Tests the `groupArraysByKey` method
+     */
+    public function testGroupArraysByKey()
+    {
+        $this->assertEquals([], Helpers::groupArraysByKey([], 'foo'));
+
+        $this->assertEquals(
+            [
+                'Bill' => [
+                    ['id' => 8, 'name' => 'Bill'],
+                    ['id' => 7, 'name' => 'Bill'],
+                ],
+                'Ivan' => [
+                    ['id' => 4, 'name' => 'Ivan'],
+                ],
+            ],
+            Helpers::groupArraysByKey([
+                ['id' => 8, 'name' => 'Bill'],
+                ['id' => 4, 'name' => 'Ivan'],
+                ['id' => 7, 'name' => 'Bill'],
+            ], 'name')
+        );
     }
 
     /**
@@ -299,5 +346,32 @@ class HelpersTest extends TestCase
         $this->assertFalse(Helpers::canCallMethod(get_class($object), 'barStatic'));
         $this->assertFalse(Helpers::canCallMethod(get_class($object), 'baqStatic'));
         $this->assertFalse(Helpers::canCallMethod(get_class($object), 'booStatic'));
+    }
+
+    /**
+     * Tests the `getModelIdentifierField` method
+     */
+    public function testGetModelIdentifierField()
+    {
+        $this->assertEquals('key', Helpers::getModelIdentifierField(new Post));
+        $this->assertEquals('id', Helpers::getModelIdentifierField(new User));
+        $this->assertEquals('key', Helpers::getModelIdentifierField(Post::class));
+
+        $mapper = $this->makeMockDatabase();
+        $query = $mapper->model(Post::class);
+        $this->assertEquals('key', Helpers::getModelIdentifierField($query));
+
+        $subQuery = $query->makeSubQuery('foo');
+        $this->assertException(IncorrectQueryException::class, function () use ($subQuery) {
+            Helpers::getModelIdentifierField($subQuery);
+        });
+
+        $this->assertException(NotModelException::class, function () {
+            Helpers::getModelIdentifierField(self::class);
+        });
+
+        $this->assertException(InvalidArgumentException::class, function () {
+            Helpers::getModelIdentifierField(123);
+        });
     }
 }

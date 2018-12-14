@@ -9,6 +9,7 @@ use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentExcep
 use Finesse\MiniDB\Exceptions\InvalidReturnValueException as DBInvalidReturnValueException;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\InvalidReturnValueException;
@@ -38,6 +39,34 @@ class Helpers
                 ModelInterface::class
             ));
         }
+    }
+
+    /**
+     * Checks that the given value is a model of the given class
+     *
+     * @param ModelInterface|mixed $model The value
+     * @param string $expectedClassName Class name
+     * @throws NotModelException If the given value is not a model object
+     * @throws IncorrectModelException If the given model has a wrong class
+     */
+    public static function checkModelObjectClass($model, string $expectedClassName)
+    {
+        if ($model instanceof $expectedClassName) {
+            return;
+        }
+
+        if ($model instanceof ModelInterface) {
+            throw new IncorrectModelException(sprintf(
+                'The given model %s is not a %s model',
+                get_class($model),
+                $expectedClassName
+            ));
+        }
+
+        throw new NotModelException(sprintf(
+            'The given value (%s) is not a model',
+            is_object($model) ? get_class($model) : gettype($model)
+        ));
     }
 
     /**
@@ -93,6 +122,24 @@ class Helpers
 
         foreach ($objects as $object) {
             $groups[$object->$property][] = $object;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * Groups array of arrays by a key values.
+     *
+     * @param array $arrays
+     * @param string $key
+     * @return array[] The keys are the values of the keys. The values are the list of suitable arrays.
+     */
+    public static function groupArraysByKey(array $arrays, string $key): array
+    {
+        $groups = [];
+
+        foreach ($arrays as $array) {
+            $groups[$array[$key]][] = $array;
         }
 
         return $groups;
@@ -319,5 +366,41 @@ class Helpers
     public static function canCallMethod($object, string $name): bool
     {
         return is_callable([$object, $name]);
+    }
+
+    /**
+     * Gets the model identifier field name from a model instance, a model class name or a query object
+     *
+     * @param string|ModelQuery|ModelInterface $hint
+     * @return string
+     * @throws IncorrectQueryException
+     * @throws InvalidArgumentException
+     * @throws NotModelException
+     */
+    public static function getModelIdentifierField($hint): string
+    {
+        if ($hint instanceof ModelInterface) {
+            return $hint::getIdentifierField();
+        }
+
+        if ($hint instanceof ModelQuery) {
+            $hint = $hint->getModelClass();
+            if ($hint === null) {
+                throw new IncorrectQueryException("The given query doesn't have a context model");
+            }
+        }
+
+        if (is_string($hint)) {
+            static::checkModelClass('The given string', $hint);
+            /** @var ModelInterface $hint */
+            return $hint::getIdentifierField();
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'The argument expected to be a %s object, a % object or a model class name, %s given',
+            ModelQuery::class,
+            ModelInterface::class,
+            is_object($hint) ? get_class($hint) : gettype($hint)
+        ));
     }
 }
