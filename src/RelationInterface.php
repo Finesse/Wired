@@ -13,6 +13,8 @@ use Finesse\Wired\Exceptions\RelationException;
 /**
  * Describes a relation between models.
  *
+ * The Parent and Child terms are used here. Parent is the model which has the relation. Child is the related model.
+ *
  * @author Surgie
  */
 interface RelationInterface
@@ -22,9 +24,9 @@ interface RelationInterface
      *
      * @param ModelQuery $query Where to apply
      * @param ModelInterface|ModelInterface[]|\Closure|null $constraint Relation constraint. ModelInterface means "must
-     *     be related to the specified model". Models array means "must be related to one of the specified models".
-     *     Closure means "must be related to a model that fit the clause in the closure". Null means "must be related to
-     *     at least one model".
+     *  be related to the specified model". Models array means "must be related to one of the specified models". Closure
+     *  means "must be related to a model that fit the clause in the closure". Null means "must be related to at least
+     *  one model".
      * @throws RelationException
      * @throws NotModelException
      * @throws InvalidArgumentException
@@ -41,9 +43,9 @@ interface RelationInterface
      * @param Mapper $mapper A mapper from which new models can be obtained
      * @param string $name Relation name (for saving to the models)
      * @param ModelInterface[] $models List of models for which the relatives must be loaded. The models must have same
-     *     class.
+     *  class.
      * @param \Closure|null $constraint Relation constraint. Closure means "the relative models must fit the clause in
-     *     the closure". Null means "no constraint".
+     *  the closure". Null means "no constraint".
      * @throws DatabaseException
      * @throws IncorrectModelException
      * @throws InvalidReturnValueException

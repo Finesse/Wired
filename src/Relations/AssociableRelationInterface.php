@@ -8,33 +8,32 @@ use Finesse\Wired\ModelInterface;
 use Finesse\Wired\RelationInterface;
 
 /**
- * A relation which can associate an object instance to a subject instance without changing the object instance and
- * creating anything in a database.
+ * A relation which can associate a parent instance to a child instance without changing the child instance and
+ * changing anything in a database.
  *
  * @author Surgie
  */
 interface AssociableRelationInterface extends RelationInterface
 {
     /**
-     * Attaches the object model to the subject model. Add the object model to the loaded relatives of the subject
-     * model.
+     * Attaches the child model to the parent model. Add the child model to the loaded relatives of the parent model.
      *
      * @param string $relationName This relation name
-     * @param ModelInterface $subject
-     * @param ModelInterface $object
+     * @param ModelInterface $parent
+     * @param ModelInterface $child
      * @throws RelationException
      * @throws IncorrectModelException
      */
-    public function associate(string $relationName, ModelInterface $subject, ModelInterface $object);
+    public function associate(string $relationName, ModelInterface $parent, ModelInterface $child);
 
     /**
-     * Detaches an attached object model from the subject model. Removes the object model from the loaded relatives of
-     * the subject model.
+     * Detaches an attached child model from the parent model. Removes the child model from the loaded relatives of
+     * the parent model.
      *
      * @param string $relationName This relation name
-     * @param ModelInterface $subject
+     * @param ModelInterface $parent
      * @throws RelationException
      * @throws IncorrectModelException
      */
-    public function dissociate(string $relationName, ModelInterface $subject);
+    public function dissociate(string $relationName, ModelInterface $parent);
 }

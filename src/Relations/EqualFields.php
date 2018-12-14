@@ -15,52 +15,50 @@ use Finesse\Wired\RelationInterface;
 /**
  * A common relation between two models where one model field value is equal to the other model field value.
  *
- * The Subject and Object terms are used here. Subject is the model which has the relation. Object is the related model.
- *
  * @author Surgie
  */
 abstract class EqualFields implements RelationInterface
 {
     /**
-     * @var string|null The subject model field name
+     * @var string|null The parent model field name
      */
-    protected $subjectModelField;
+    protected $parentModelField;
 
     /**
-     * @var string|ModelInterface The object model class name (checked)
+     * @var string|ModelInterface The child model class name (checked)
      */
-    protected $objectModelClass;
+    protected $childModelClass;
 
     /**
-     * @var string|null The object model field name
+     * @var string|null The child model field name
      */
-    protected $objectModelField;
+    protected $childModelField;
 
     /**
-     * @var bool Does the subject model has 0-many object models (true) or 0-1 (false)
+     * @var bool Does the parent model has 0-many object models (true) or 0-1 (false)
      */
     protected $expectsManyObjectModels;
 
     /**
-     * @param string|null $subjectModelField The subject model field name. If null, the subject model identifier will be
-     *     used.
-     * @param string $objectModelClass The object model class name
-     * @param string|null $objectModelField The object model field name. If null, the object model identifier will be
-     *     used.
-     * @param bool $expectsManyObjectModels Does the subject model has 0-many object models (true) or 0-1 (false)?
+     * @param string|null $parentModelField The subject model field name. If null, the subject model identifier will be
+     *  used.
+     * @param string $childModelClass The object model class name
+     * @param string|null $childModelField The object model field name. If null, the object model identifier will be
+     *  used.
+     * @param bool $expectsManyObjectModels Does the parent model has 0-many object models (true) or 0-1 (false)?
      * @throws NotModelException
      */
     public function __construct(
-        string $subjectModelField = null,
-        string $objectModelClass,
-        string $objectModelField = null,
+        string $parentModelField = null,
+        string $childModelClass,
+        string $childModelField = null,
         bool $expectsManyObjectModels
     ) {
-        Helpers::checkModelClass('The object model class name', $objectModelClass);
+        Helpers::checkModelClass('The object model class name', $childModelClass);
 
-        $this->subjectModelField = $subjectModelField;
-        $this->objectModelClass = $objectModelClass;
-        $this->objectModelField = $objectModelField;
+        $this->parentModelField = $parentModelField;
+        $this->childModelClass = $childModelClass;
+        $this->childModelField = $childModelField;
         $this->expectsManyObjectModels = $expectsManyObjectModels;
     }
 
@@ -93,41 +91,41 @@ abstract class EqualFields implements RelationInterface
     /**
      * {@inheritDoc}
      */
-    public function loadRelatives(Mapper $mapper, string $name, array $models, \Closure $constraint = null)
+    public function loadRelatives(Mapper $mapper, string $name, array $parents, \Closure $constraint = null)
     {
-        if (!$models) {
+        if (!$parents) {
             return;
         }
 
-        $sampleModel = reset($models);
-        $subjectModelField = $this->getSubjectModelField(get_class($sampleModel));
-        $objectModelField = $this->getObjectModelField();
+        $sampleParent = reset($parents);
+        $parentModelField = $this->getParentModelField(get_class($sampleParent));
+        $childModelField = $this->getChildModelField();
 
-        // Collecting the list of object model column values
-        $searchValues = Helpers::getObjectsPropertyValues($models, $subjectModelField, true);
+        // Collecting the list of child model column values
+        $searchValues = Helpers::getObjectsPropertyValues($parents, $parentModelField, true);
 
-        // Getting relative models
+        // Getting child models
         if ($searchValues) {
-            $query = $mapper->model($this->objectModelClass);
+            $query = $mapper->model($this->childModelClass);
             if ($constraint) {
                 $query = $query->apply($constraint);
             }
             // whereIn is applied after to make sure that the relation closure is applied with the AND rule
-            $relatives = $query->whereIn($this->getObjectModelField(), $searchValues)->get();
+            $children = $query->whereIn($this->getChildModelField(), $searchValues)->get();
         } else {
-            $relatives = [];
+            $children = [];
         }
 
-        // Setting the relative models to the input models
+        // Setting the child models to the parent models
         if ($this->expectsManyObjectModels) {
-            $groupedRelatives = Helpers::groupObjectsByProperty($relatives, $objectModelField);
-            foreach ($models as $model) {
-                $model->setLoadedRelatives($name, $groupedRelatives[$model->$subjectModelField] ?? []);
+            $groupedChildren = Helpers::groupObjectsByProperty($children, $childModelField);
+            foreach ($parents as $model) {
+                $model->setLoadedRelatives($name, $groupedChildren[$model->$parentModelField] ?? []);
             }
         } else {
-            $relatives = Helpers::indexObjectsByProperty($relatives, $objectModelField);
-            foreach ($models as $model) {
-                $model->setLoadedRelatives($name, $relatives[$model->$subjectModelField] ?? null);
+            $children = Helpers::indexObjectsByProperty($children, $childModelField);
+            foreach ($parents as $model) {
+                $model->setLoadedRelatives($name, $children[$model->$parentModelField] ?? null);
             }
         }
     }
@@ -142,12 +140,12 @@ abstract class EqualFields implements RelationInterface
      */
     protected function applyToQueryWhereWithModel(ModelQuery $query, ModelInterface $model)
     {
-        $this->checkObjectModel($model);
+        $this->checkChildModel($model);
 
         $query->where(
-            $this->getSubjectModelFieldFromQuery($query),
+            $this->getParentModelFieldFromQuery($query),
             '=',
-            $model->{$this->getObjectModelField()}
+            $model->{$this->getChildModelField()}
         );
     }
 
@@ -163,13 +161,13 @@ abstract class EqualFields implements RelationInterface
     protected function applyToQueryWhereWithModels(ModelQuery $query, array $models)
     {
         foreach ($models as $model) {
-            $this->checkObjectModel($model);
+            $this->checkChildModel($model);
         }
 
-        $searchValues = Helpers::getObjectsPropertyValues($models, $this->getObjectModelField(), true);
+        $searchValues = Helpers::getObjectsPropertyValues($models, $this->getChildModelField(), true);
 
         if ($searchValues) {
-            $query->whereIn($this->getSubjectModelFieldFromQuery($query), $searchValues);
+            $query->whereIn($this->getParentModelFieldFromQuery($query), $searchValues);
         } else {
             // If the relatives list is empty, the where criterion is equivalent to false
             $query->whereRaw('0');
@@ -186,47 +184,47 @@ abstract class EqualFields implements RelationInterface
      */
     protected function applyToQueryWhereWithClause(ModelQuery $query, \Closure $clause = null)
     {
-        $subQuery = $query->makeModelSubQuery($this->objectModelClass);
+        $subQuery = $query->makeModelSubQuery($this->childModelClass);
         if ($clause) {
             $subQuery = $subQuery->apply($clause);
         }
 
         // whereColumn is applied after to make sure that the relation closure is applied with the AND rule
         $subQuery->whereColumn(
-            $query->getTableIdentifier().'.'.$this->getSubjectModelFieldFromQuery($query),
+            $query->getTableIdentifier().'.'.$this->getParentModelFieldFromQuery($query),
             '=',
-            $subQuery->getTableIdentifier().'.'.$this->getObjectModelField()
+            $subQuery->getTableIdentifier().'.'.$this->getChildModelField()
         );
 
         $query->whereExists($subQuery->getBaseQuery());
     }
 
     /**
-     * Gets the subject model field name.
+     * Gets the parent model field name.
      *
-     * @param string|ModelInterface $subjectModelClass Subject model class name
+     * @param string|ModelInterface $parentModelClass Subject model class name
      * @return string
      */
-    protected function getSubjectModelField(string $subjectModelClass): string
+    protected function getParentModelField(string $parentModelClass): string
     {
-        return $this->subjectModelField ?? $subjectModelClass::getIdentifierField();
+        return $this->parentModelField ?? $parentModelClass::getIdentifierField();
     }
 
     /**
-     * Gets the subject model field name. Uses a query object to get the subject model class name.
+     * Gets the parent model field name. Uses a query object to get the parent model class name.
      *
      * @param ModelQuery $query
      * @return string
      * @throws IncorrectQueryException If the query doesn't have a model
      */
-    protected function getSubjectModelFieldFromQuery(ModelQuery $query): string
+    protected function getParentModelFieldFromQuery(ModelQuery $query): string
     {
         $modelClass = $query->getModelClass();
         if ($modelClass === null) {
             throw new IncorrectQueryException('The given query doesn\'t have a context model');
         }
 
-        return $this->getSubjectModelField($modelClass);
+        return $this->getParentModelField($modelClass);
     }
 
     /**
@@ -234,21 +232,21 @@ abstract class EqualFields implements RelationInterface
      *
      * @return string
      */
-    protected function getObjectModelField(): string
+    protected function getChildModelField(): string
     {
-        return $this->objectModelField ?? $this->objectModelClass::getIdentifierField();
+        return $this->childModelField ?? $this->childModelClass::getIdentifierField();
     }
 
     /**
-     * Checks that the given value is an object model class model.
+     * Checks that the given value is a child model class model.
      *
      * @param ModelInterface|mixed $model
      * @throws NotModelException If the given value is not a model
      * @throws RelationException If the model is not an object model class model
      */
-    protected function checkObjectModel($model)
+    protected function checkChildModel($model)
     {
-        if ($model instanceof $this->objectModelClass) {
+        if ($model instanceof $this->childModelClass) {
             return;
         }
 
@@ -256,7 +254,7 @@ abstract class EqualFields implements RelationInterface
             throw new RelationException(sprintf(
                 'The given model %s is not a %s model',
                 get_class($model),
-                $this->objectModelClass
+                $this->childModelClass
             ));
         }
 
