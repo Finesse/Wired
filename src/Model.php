@@ -29,11 +29,12 @@ abstract class Model implements ModelInterface
      * relatives of this model.
      *
      * @param string $relationName Relation name
-     * @param ModelInterface $model Model to attach
+     * @param ModelInterface $model Model to attach (this argument is required, it will have no default value in a
+     *  future release)
      * @throws RelationException
      * @throws IncorrectModelException
      */
-    public function associate(string $relationName, ModelInterface $model)
+    public function associate(string $relationName, ModelInterface $model = null)
     {
         $relation = static::getRelationOrFail($relationName);
 

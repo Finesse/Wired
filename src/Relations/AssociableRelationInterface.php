@@ -20,11 +20,11 @@ interface AssociableRelationInterface extends RelationInterface
      *
      * @param string $relationName This relation name
      * @param ModelInterface $parent
-     * @param ModelInterface $child
+     * @param ModelInterface|null $child (this argument is required, it will have no default value in a future release)
      * @throws RelationException
      * @throws IncorrectModelException
      */
-    public function associate(string $relationName, ModelInterface $parent, ModelInterface $child);
+    public function associate(string $relationName, ModelInterface $parent, ModelInterface $child = null);
 
     /**
      * Detaches an attached child model from the parent model. Removes the child model from the loaded relatives of

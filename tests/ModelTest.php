@@ -166,6 +166,11 @@ class ModelTest extends TestCase
         $this->assertNull($post->author_id);
         $this->assertNull($post->author);
 
+        $post->associate('author', $user1);
+        $post->associate('author', null);
+        $this->assertNull($post->author_id);
+        $this->assertNull($post->author);
+
         $this->assertException(RelationException::class, function () use ($user1, $post) {
             $user1->associate('posts', $user1);
         }, function (RelationException $exception) {

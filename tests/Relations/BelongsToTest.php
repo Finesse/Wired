@@ -178,6 +178,11 @@ class BelongsToTest extends TestCase
         $this->assertNull($post->author_id);
         $this->assertNull($post->author);
 
+        $relation->associate('author', $post, $user1);
+        $relation->associate('author', $post, null);
+        $this->assertNull($post->author_id);
+        $this->assertNull($post->author);
+
         $this->assertException(RelationException::class, function () use ($relation, $post) {
             $relation->associate('author', $post, new Category());
         }, function (RelationException $exception) {

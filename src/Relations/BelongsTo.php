@@ -28,21 +28,26 @@ class BelongsTo extends EqualFields implements AssociableRelationInterface
     /**
      * {@inheritDoc}
      */
-    public function associate(string $relationName, ModelInterface $parent, ModelInterface $child)
+    public function associate(string $relationName, ModelInterface $parent, ModelInterface $child = null)
     {
-        $this->checkChildModel($child);
-
         $parentModelField = $this->getParentModelField(get_class($parent));
-        $childModelField = $this->getChildModelField();
 
-        if ($child->$childModelField === null) {
-            throw new IncorrectModelException(
-                'The associated model doesn\'t have a value in the identifier field `'.$childModelField.'`'
-                    . '; perhaps it is not saved to the database'
-            );
+        if ($child) {
+            $this->checkChildModel($child);
+            $childModelField = $this->getChildModelField();
+
+            if ($child->$childModelField === null) {
+                throw new IncorrectModelException(
+                    "The associated model doesn't have a value in the identifier field `$childModelField`"
+                    . "; perhaps it is not saved to the database"
+                );
+            }
+
+            $parent->$parentModelField = $child->$childModelField;
+        } else {
+            $parent->$parentModelField = null;
         }
 
-        $parent->$parentModelField = $child->$childModelField;
         $parent->setLoadedRelatives($relationName, $child);
     }
 
@@ -51,9 +56,6 @@ class BelongsTo extends EqualFields implements AssociableRelationInterface
      */
     public function dissociate(string $relationName, ModelInterface $parent)
     {
-        $parentModelField = $this->getParentModelField(get_class($parent));
-
-        $parent->$parentModelField = null;
-        $parent->setLoadedRelatives($relationName, null);
+        $this->associate($relationName, $parent, null);
     }
 }

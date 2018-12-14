@@ -205,7 +205,7 @@ $orm->save($post);
 It works only for `BelongsTo` relations. There is a method for detaching a parent model:
 
 ```php
-$post->dissociate('author');
+$post->dissociate('author'); // Or $post->associate('author', null);
 $orm->save($post);
 ```
 
