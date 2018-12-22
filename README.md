@@ -35,7 +35,7 @@ If you need a new database system support please implement it [there](https://gi
 
 ## Documentation
 
-The documentation is located in [the `docs` directory](docs/getting-started.md).
+The documentation is available at [wired-orm.readthedocs.io](http://wired-orm.readthedocs.io).
 
 Also all the classes, methods and properties has a PHPDoc comment in the code.
 

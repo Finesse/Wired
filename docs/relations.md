@@ -1,6 +1,3 @@
-* [Getting started](getting-started.md)
-* **Relations**
-
 # Relations
 
 Ralating models is describing family connections between models, 

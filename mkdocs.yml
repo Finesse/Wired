@@ -1,0 +1,7 @@
+site_name: Wired
+repo_url: http://github.com/Finesse/Wired
+theme: readthedocs
+pages:
+    - Home: index.md
+    - Getting started: getting-started.md
+    - Relations: relations.md

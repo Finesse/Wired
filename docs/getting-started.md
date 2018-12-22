@@ -1,6 +1,3 @@
-* **Getting started**
-* [Relations](relations.md)
-
 # Getting started
 
 ## Installation
