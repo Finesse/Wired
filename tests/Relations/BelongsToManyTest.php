@@ -3,11 +3,13 @@
 namespace Finesse\Wired\Tests\Relations;
 
 use Finesse\MiniDB\Query;
+use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Helpers;
 use Finesse\Wired\ModelQuery;
+use Finesse\Wired\Relations\BelongsToMany;
 use Finesse\Wired\Tests\ModelsForTests\Category;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
@@ -147,5 +149,43 @@ class BelongsToManyTest extends TestCase
         $this->assertEquals(['Charlie', 'Dick'], Helpers::getObjectsPropertyValues($users[0]->followings, 'name'));
         $this->assertEquals(['Frank'], Helpers::getObjectsPropertyValues($users[1]->followings, 'name'));
         $this->assertEquals(['Frank'], Helpers::getObjectsPropertyValues($users[2]->followings, 'name'));
+    }
+
+    /**
+     * Tests the `detach` method
+     */
+    public function testDetach()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        $relation = User::categories();
+        $users = $mapper->model(User::class)->find([1, 6, 11]);
+        $categories = $mapper->model(Category::class)->find([5, 6]);
+        $relation->detach($mapper, $users, $categories);
+        $posts = $mapper
+            ->model(Post::class)
+            ->addSelect('key')
+            ->whereRelation('author', $users)
+            ->orWhereRelation('category', $categories)
+            ->get();
+        $this->assertEquals([1, 7, 12, 14, 17], Helpers::getObjectsPropertyValues($posts, 'key'));
+
+        // Empty model list
+        $attachmentsCount = $mapper->model(Post::class)->count();
+        $relation->detach($mapper, $users, []);
+        $this->assertEquals($attachmentsCount, $mapper->model(Post::class)->count());
+        $relation->detach($mapper, [], $categories);
+        $this->assertEquals($attachmentsCount, $mapper->model(Post::class)->count());
+
+        // Wrong child model
+        $this->assertException(IncorrectModelException::class, function () use ($relation, $mapper, $users) {
+            $relation->detach($mapper, $users, [new Post]);
+        });
+
+        // Database error
+        $relation = new BelongsToMany(Category::class, 'user_id', 'missing_table', 'category_id');
+        $this->assertException(DatabaseException::class, function () use ($relation, $mapper, $users, $categories) {
+            $relation->detach($mapper, $users, $categories);
+        });
     }
 }

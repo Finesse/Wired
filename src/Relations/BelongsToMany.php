@@ -16,7 +16,7 @@ use Finesse\Wired\RelationInterface;
  *
  * @author Surgie
  */
-class BelongsToMany implements RelationInterface
+class BelongsToMany implements RelationInterface, AttachableRelationInterface
 {
     /**
      * @var string|null The parent model identifier field name
@@ -157,6 +157,44 @@ class BelongsToMany implements RelationInterface
             }
 
             $model->setLoadedRelatives($name, $parentChildren);
+        }
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * The models additional data are additional fields for the pivot table records (keys are field names)
+     *
+     * @todo Test
+     */
+    public function attach(Mapper $mapper, array $parentModels, array $childModels, string $onMatch, bool $detachOther)
+    {
+        // TODO: Implement attach() method.
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function detach(Mapper $mapper, array $parents, array $children)
+    {
+        if (!$parents || !$children) {
+            return;
+        }
+
+        $sampleParent = reset($parents);
+        $sampleChild = reset($children);
+        Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
+        $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
+        $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
+
+        try {
+            $mapper->getDatabase()
+                ->table($this->pivotTable)
+                ->whereIn($this->pivotParentField, $parentIdentifiers)
+                ->whereIn($this->pivotChildField, $childIdentifiers)
+                ->delete();
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
         }
     }
 

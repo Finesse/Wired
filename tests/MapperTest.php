@@ -363,4 +363,41 @@ class MapperTest extends TestCase
             );
         });
     }
+
+    /**
+     * Tests the `detach` method
+     */
+    public function testDetach()
+    {
+        $mapper = $this->makeMockDatabase();
+        $categories = $mapper->model(Category::class)->orderBy('id')->find([5, 6, 7]);
+        $users = $mapper->model(User::class)->orderBy('id')->find([1, 6, 11]);
+        $attachmentsCount = $mapper->model(Post::class)->count();
+
+        // One attachment
+        $mapper->detach($categories[1], 'authors', $users[2]);
+        $this->assertEquals($attachmentsCount - 1, $mapper->model(Post::class)->count());
+
+        // Many attachments
+        $mapper->detach($categories, 'authors', $users);
+        $this->assertEquals($attachmentsCount - 5, $mapper->model(Post::class)->count());
+
+        // No attachments
+        $mapper->detach([], 'authors', []);
+        $this->assertEquals($attachmentsCount - 5, $mapper->model(Post::class)->count());
+
+        // Unsupported relation
+        $this->assertException(RelationException::class, function () use ($mapper, $categories, $users) {
+            $mapper->detach($categories, 'posts', $users);
+        }, function (RelationException $exception) {
+            $this->assertStringStartsWith('Detaching is not available', $exception->getMessage());
+        });
+
+        // Undefined relation
+        $this->assertException(RelationException::class, function () use ($mapper, $categories, $users) {
+            $mapper->detach($categories, 'foobar', $users);
+        }, function (RelationException $exception) {
+            $this->assertContains('is not defined', $exception->getMessage());
+        });
+    }
 }
