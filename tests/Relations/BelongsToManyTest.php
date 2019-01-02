@@ -7,7 +7,9 @@ use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
 use Finesse\Wired\Helpers;
+use Finesse\Wired\Mapper;
 use Finesse\Wired\ModelQuery;
 use Finesse\Wired\Relations\BelongsToMany;
 use Finesse\Wired\Tests\ModelsForTests\Category;
@@ -149,6 +151,99 @@ class BelongsToManyTest extends TestCase
         $this->assertEquals(['Charlie', 'Dick'], Helpers::getObjectsPropertyValues($users[0]->followings, 'name'));
         $this->assertEquals(['Frank'], Helpers::getObjectsPropertyValues($users[1]->followings, 'name'));
         $this->assertEquals(['Frank'], Helpers::getObjectsPropertyValues($users[2]->followings, 'name'));
+    }
+
+    /**
+     * Tests the `attach` method
+     */
+    public function testAttach()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        // Replace and detach
+        $relation = User::followings();
+        $followers = $mapper->model(User::class)->find([2, 3]);
+        $followings = $mapper->model(User::class)->find([6, 7]);
+        $relation->attach($mapper, $followers, $followings, Mapper::REPLACE, true);
+        $this->assertEquals([
+            ['id' =>  9, 'led_id' => 2, 'lead_id' => 6],
+            ['id' => 10, 'led_id' => 2, 'lead_id' => 7],
+            ['id' => 11, 'led_id' => 3, 'lead_id' => 6],
+            ['id' => 12, 'led_id' => 3, 'lead_id' => 7],
+        ], $mapper->getDatabase()
+            ->table('followings')
+            ->whereIn('led_id', [2, 3])
+            ->orderBy('id')
+            ->get()
+        );
+
+        // Duplicate, no detach, with extra fields
+        $relation = User::categories();
+        $getExtraFields = function (User $user, Category $category, $userKey, $categoryKey) {
+            return [
+                'created_at' => time() - rand(1000, 100000),
+                'text' => "$user->name with order $userKey has posted to $category->title with order $categoryKey"
+            ];
+        };
+        $users = $mapper->model(User::class)->find([11]);
+        $categories = $mapper->model(Category::class)->find([2, 7]);
+        $relation->attach($mapper, $users, $categories, Mapper::DUPLICATE, false, $getExtraFields);
+        $posts = $mapper
+            ->model(Post::class)
+            ->whereRelation('author', $users)
+            ->orderBy('key')
+            ->get();
+        $this->assertCount(4, $posts);
+        $this->assertAttributes([
+            'category_id' => $categories[1]->id,
+            'text' => 'Kenny with order 0 has posted to Lifehacks with order 1'
+        ], $posts[3]);
+
+        // Duplicate and detach
+        $relation = User::followings();
+        $follower = $mapper->model(User::class)->find(3);
+        $followings = $mapper->model(User::class)->find([7, 8]);
+        $relation->attach($mapper, [$follower], $followings, Mapper::DUPLICATE, true);
+        $this->assertEquals([
+            ['id' => 12, 'led_id' => 3, 'lead_id' => 7],
+            ['id' => 13, 'led_id' => 3, 'lead_id' => 7],
+            ['id' => 14, 'led_id' => 3, 'lead_id' => 8],
+        ], $mapper->getDatabase()
+            ->table('followings')
+            ->where('led_id', $follower->id)
+            ->orderBy('id')
+            ->get()
+        );
+
+        // Empty models lists
+        $attachmentsCount = $mapper->getDatabase()->table('followings')->count();
+        $relation->attach($mapper, [], [], Mapper::DUPLICATE, false);
+        $this->assertEquals($attachmentsCount, $mapper->getDatabase()->table('followings')->count());
+
+        // Invalid extra fields return value
+        $this->assertException(InvalidReturnValueException::class, function () use ($relation, $mapper, $follower, $followings) {
+            $relation->attach($mapper, [$follower], $followings, Mapper::DUPLICATE, false, function () {
+                return 'foo';
+            });
+        });
+
+        // Wrong child model
+        $this->assertException(IncorrectModelException::class, function () use ($relation, $mapper, $follower) {
+            $relation->attach($mapper, [$follower], [new Post], Mapper::DUPLICATE, false);
+        });
+
+        // Database error
+        $relation = new BelongsToMany(User::class, 'user1_id', 'missing_table', 'user2_id');
+        $this->assertException(DatabaseException::class, function () use ($relation, $mapper, $follower, $followings) {
+            $relation->attach($mapper, [$follower], $followings, Mapper::DUPLICATE, false);
+        });
+
+        // Unexpected "on match" argument
+        $this->assertException(InvalidArgumentException::class, function () use ($relation, $mapper, $follower, $followings) {
+            $relation->attach($mapper, [$follower], $followings, 'foobar', false);
+        }, function (InvalidArgumentException $exception) {
+            $this->assertContains('unexpected $onMatch value', $exception->getMessage());
+        });
     }
 
     /**

@@ -18,33 +18,31 @@ interface AttachableRelationInterface
      * Creates attachments between the parent and the child models
      *
      * @param Mapper $mapper A mapper to access the database
-     * @param ModelInterface[][]|mixed[][] $parents The parent models. All the models has the same class. The value has
-     *  the following format:
-     *  <pre>
-     *  [
-     *      [
-     *          ModelInterface, // A model
-     *          mixed // The additional data to add to the created model attachments
-     *      ],
-     *      [
-     *          ModelInterface,
-     *          mixed
-     *      ],
-     *      ...
-     *  ]
-     *  </pre>
-     * @param ModelInterface[][]|mixed[][] $children The child models. Has the same format as the parent models.
+     * @param ModelInterface[] $parents The parent models. All the models has the same class.
+     * @param ModelInterface[] $children The child models. All the models has the same class.
      * @param string $onMatch What to do when a given attachment matches an existing attachment. Possible values:
      *  - 'update' or Mapper::UPDATE,
      *  - 'replace' or Mapper::REPLACE,
      *  - 'duplicate' or Mapper::DUPLICATE
      * @param bool $detachOther If true, the child models that are not in the given children list will be detached from
      *  the given parent models
+     * @param callable|null $getAttachmentData Makes additional data for the created attachments. Takes arguments:
+     *  - Parent model,
+     *  - Child model,
+     *  - Parent model key in the $parents list,
+     *  - Child model key in the $children list
      * @return void
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
-    public function attach(Mapper $mapper, array $parents, array $children, string $onMatch, bool $detachOther);
+    public function attach(
+        Mapper $mapper,
+        array $parents,
+        array $children,
+        string $onMatch,
+        bool $detachOther,
+        callable $getAttachmentData = null
+    );
 
     /**
      * Removes attachments of the parent models

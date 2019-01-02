@@ -2,8 +2,11 @@
 
 namespace Finesse\Wired\Relations;
 
+use Finesse\Wired\Exceptions\DatabaseException;
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\Helpers;
 use Finesse\Wired\Mapper;
@@ -163,13 +166,96 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     /**
      * @inheritDoc
      *
-     * The models additional data are additional fields for the pivot table records (keys are field names)
+     * The attachments additional data are extra fields for the pivot table records (keys are field names)
      *
      * @todo Test
+     * @throws DatabaseException
+     * @throws IncorrectModelException
+     * @throws InvalidReturnValueException
      */
-    public function attach(Mapper $mapper, array $parentModels, array $childModels, string $onMatch, bool $detachOther)
-    {
-        // TODO: Implement attach() method.
+    public function attach(
+        Mapper $mapper,
+        array $parents,
+        array $children,
+        string $onMatch,
+        bool $detachOther,
+        callable $getAttachmentData = null
+    ) {
+        if (!$parents || !$children) {
+            return;
+        }
+
+        $database = $mapper->getDatabase();
+        $sampleParent = reset($parents);
+        $sampleChild = reset($children);
+        Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
+        $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
+        $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
+
+        try {
+            // Detaching other children (if required)
+            if ($detachOther) {
+                // 2 deletions in the "replace'n'detach" case are combined into 1
+                if ($onMatch !== Mapper::REPLACE) {
+                    $database
+                        ->table($this->pivotTable)
+                        ->whereIn($this->pivotParentField, $parentIdentifiers)
+                        ->whereNotIn($this->pivotChildField, $childIdentifiers)
+                        ->delete();
+                }
+            }
+
+            // Attaching the given children
+            switch ($onMatch) {
+                /** @noinspection PhpMissingBreakStatementInspection */
+                case Mapper::REPLACE:
+                    $query = $database
+                        ->table($this->pivotTable)
+                        ->whereIn($this->pivotParentField, $parentIdentifiers);
+                    if ($detachOther) {
+                        // The combined "replace'n'detach" deletion
+                    } else {
+                        $query->whereIn($this->pivotChildField, $childIdentifiers);
+                    }
+                    $query->delete();
+                    // intentional break skip
+
+                case Mapper::DUPLICATE:
+                    $newAttachments = [];
+
+                    foreach ($parentIdentifiers as $parentKey => $parentId) {
+                        foreach ($childIdentifiers as $childKey => $childId) {
+                            $extraFields = $this->makeAttachmentExtraFields(
+                                $parents,
+                                $children,
+                                $parentKey,
+                                $childKey,
+                                $getAttachmentData,
+                                '$getAttachmentData'
+                            );
+                            $newAttachments[] = $this->makeAttachmentRow($parentId, $childId, $extraFields);
+                        }
+                    }
+
+                    if ($newAttachments) {
+                        $database->table($this->pivotTable)->insert($newAttachments);
+                    }
+                    break;
+
+                case Mapper::UPDATE:
+                    // todo: Implement
+
+                default:
+                    throw new InvalidArgumentException(sprintf(
+                        'An unexpected $onMatch value given (%s)',
+                        is_string($onMatch)
+                            ? sprintf('"%s"', $onMatch)
+                            : (is_object($onMatch) ? get_class($onMatch) : gettype($onMatch))
+                    ));
+            }
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
+        }
     }
 
     /**
@@ -224,5 +310,58 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     protected function getChildModelIdentifierField(): string
     {
         return $this->childIdentifierField ?? $this->childModelClass::getIdentifierField();
+    }
+
+    /**
+     * Makes a database table row to represent an attachment
+     *
+     * @param mixed $parentId The parent model identifier in the table
+     * @param mixed $childId The child model identifier in the table
+     * @param array|null Additional fields to the row. The keys are the table fields names.
+     * @return array The table row. The keys are the field names.
+     */
+    protected function makeAttachmentRow($parentId, $childId, array $extraFields = null): array
+    {
+        $row = [
+            $this->pivotParentField => $parentId,
+            $this->pivotChildField  => $childId
+        ];
+
+        return $extraFields ? $extraFields + $row : $row;
+    }
+
+    /**
+     * Makes a list of additional fields to the attachment table row
+     *
+     * @param ModelInterface[] $parents Parent models
+     * @param ModelInterface[] $children Child models
+     * @param string|int $parentKey The index of the parent models array
+     * @param string|int $childKey The index of the child models array
+     * @param callable|null $extraFieldsMaker A function generating the attachment additional fields
+     * @param string $callbackArgumentName The $extraFieldsMaker argument name for the exceptions
+     * @return array|null The keys are the field names
+     * @throws InvalidReturnValueException
+     */
+    protected function makeAttachmentExtraFields(
+        array $parents,
+        array $children,
+        $parentKey,
+        $childKey,
+        callable $extraFieldsMaker = null,
+        string $callbackArgumentName = '$extraFieldsMaker'
+    ) {
+        $extraFields = $extraFieldsMaker
+            ? $extraFieldsMaker($parents[$parentKey], $children[$childKey], $parentKey, $childKey)
+            : null;
+
+        if ($extraFields !== null && !is_array($extraFields)) {
+            throw new InvalidReturnValueException(sprintf(
+                'The %s return value expected to be an array or null, %s given',
+                $callbackArgumentName,
+                is_object($extraFields) ? get_class($extraFields) : gettype($extraFields)
+            ));
+        }
+
+        return $extraFields;
     }
 }

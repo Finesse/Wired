@@ -110,14 +110,14 @@ class TestCase extends BaseTestCase
             )
         ');
         $database->table('followings')->insert([
-            ['led_id' => 1, 'lead_id' => 2],
-            ['led_id' => 1, 'lead_id' => 3],
-            ['led_id' => 1, 'lead_id' => 4],
-            ['led_id' => 2, 'lead_id' => 1],
-            ['led_id' => 2, 'lead_id' => 6],
-            ['led_id' => 2, 'lead_id' => 2],
-            ['led_id' => 3, 'lead_id' => 6],
-            ['led_id' => 4, 'lead_id' => 6],
+            ['id' => 1, 'led_id' => 1, 'lead_id' => 2],
+            ['id' => 2, 'led_id' => 1, 'lead_id' => 3],
+            ['id' => 3, 'led_id' => 1, 'lead_id' => 4],
+            ['id' => 4, 'led_id' => 2, 'lead_id' => 1],
+            ['id' => 5, 'led_id' => 2, 'lead_id' => 6],
+            ['id' => 6, 'led_id' => 2, 'lead_id' => 2],
+            ['id' => 7, 'led_id' => 3, 'lead_id' => 6],
+            ['id' => 8, 'led_id' => 4, 'lead_id' => 6],
         ]);
 
         $database->statement('

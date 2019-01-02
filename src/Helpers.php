@@ -403,4 +403,25 @@ class Helpers
             is_object($hint) ? get_class($hint) : gettype($hint)
         ));
     }
+
+    /**
+     * Returns items of the $new array that are not presented in the $old array or which values differ
+     *
+     * @todo Test
+     * @param array $old
+     * @param array $new
+     * @return array The keys are from the $new array, as well as the values
+     */
+    public static function getFieldsToUpdate(array $old, array $new): array
+    {
+        $changed = [];
+
+        foreach ($new as $key => $value) {
+            if (!array_key_exists($key, $old) || $value !== $old[$key]) {
+                $changed[$key] = $value;
+            }
+        }
+
+        return $changed;
+    }
 }
