@@ -177,6 +177,11 @@ class BelongsToManyTest extends TestCase
         $relation->detach($mapper, [], $categories);
         $this->assertEquals($attachmentsCount, $mapper->model(Post::class)->count());
 
+        // Detach all child models
+        $relation->detach($mapper, $users);
+        $this->assertEquals($attachmentsCount - 4, $mapper->model(Post::class)->count());
+        $this->assertEmpty($mapper->model(Category::class)->whereRelation('authors', $users)->get());
+
         // Wrong child model
         $this->assertException(IncorrectModelException::class, function () use ($relation, $mapper, $users) {
             $relation->detach($mapper, $users, [new Post]);
@@ -184,8 +189,8 @@ class BelongsToManyTest extends TestCase
 
         // Database error
         $relation = new BelongsToMany(Category::class, 'user_id', 'missing_table', 'category_id');
-        $this->assertException(DatabaseException::class, function () use ($relation, $mapper, $users, $categories) {
-            $relation->detach($mapper, $users, $categories);
+        $this->assertException(DatabaseException::class, function () use ($relation, $mapper, $users) {
+            $relation->detach($mapper, $users);
         });
     }
 }

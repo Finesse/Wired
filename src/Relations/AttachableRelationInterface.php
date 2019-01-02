@@ -18,7 +18,7 @@ interface AttachableRelationInterface
      * Creates attachments between the parent and the child models
      *
      * @param Mapper $mapper A mapper to access the database
-     * @param ModelInterface[][]|mixed[][] $oarents The parent models. All the models have the same class. The value has
+     * @param ModelInterface[][]|mixed[][] $parents The parent models. All the models has the same class. The value has
      *  the following format:
      *  <pre>
      *  [
@@ -47,14 +47,15 @@ interface AttachableRelationInterface
     public function attach(Mapper $mapper, array $parents, array $children, string $onMatch, bool $detachOther);
 
     /**
-     * Removes attachments between the parent and the child models
+     * Removes attachments of the parent models
      *
      * @param Mapper $mapper A mapper to access the database
-     * @param ModelInterface[] $oarents The parent models. All the models have the same class.
-     * @param ModelInterface[] $children The child models. All the models have the same class.
+     * @param ModelInterface[] $parents The parent models. All the models has the same class.
+     * @param ModelInterface[]|null $children If not null, only the attachments with the given child models must be
+     *  removed. All the models has the same class.
      * @return void
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
-    public function detach(Mapper $mapper, array $parents, array $children);
+    public function detach(Mapper $mapper, array $parents, array $children = null);
 }

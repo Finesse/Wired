@@ -175,24 +175,29 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     /**
      * @inheritDoc
      */
-    public function detach(Mapper $mapper, array $parents, array $children)
+    public function detach(Mapper $mapper, array $parents, array $children = null)
     {
-        if (!$parents || !$children) {
+        if (!$parents || $children !== null && !$children) {
             return;
         }
 
-        $sampleParent = reset($parents);
-        $sampleChild = reset($children);
-        Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
-        $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
-        $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
-
         try {
-            $mapper->getDatabase()
+            $sampleParent = reset($parents);
+            $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
+
+            $query = $mapper->getDatabase()
                 ->table($this->pivotTable)
-                ->whereIn($this->pivotParentField, $parentIdentifiers)
-                ->whereIn($this->pivotChildField, $childIdentifiers)
-                ->delete();
+                ->whereIn($this->pivotParentField, $parentIdentifiers);
+
+            if ($children !== null) {
+                $sampleChild = reset($children);
+                Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
+                $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
+
+                $query->whereIn($this->pivotChildField, $childIdentifiers);
+            }
+
+            $query->delete();
         } catch (\Throwable $exception) {
             throw Helpers::wrapException($exception);
         }

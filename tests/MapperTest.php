@@ -400,4 +400,40 @@ class MapperTest extends TestCase
             $this->assertContains('is not defined', $exception->getMessage());
         });
     }
+
+    /**
+     * Tests the `detachAll` method
+     */
+    public function testDetachAll()
+    {
+        $mapper = $this->makeMockDatabase();
+        $categories = $mapper->model(Category::class)->orderBy('id')->find([5, 6, 7]);
+        $attachmentsCount = $mapper->model(Post::class)->count();
+
+        // One model
+        $mapper->detachAll($categories[1], 'authors');
+        $this->assertEquals($attachmentsCount - 2, $mapper->model(Post::class)->count());
+
+        // Many models
+        $mapper->detachAll($categories, 'authors');
+        $this->assertEquals($attachmentsCount - 6, $mapper->model(Post::class)->count());
+
+        // No models
+        $mapper->detachAll([], 'authors');
+        $this->assertEquals($attachmentsCount - 6, $mapper->model(Post::class)->count());
+
+        // Unsupported relation
+        $this->assertException(RelationException::class, function () use ($mapper, $categories) {
+            $mapper->detachAll($categories, 'posts');
+        }, function (RelationException $exception) {
+            $this->assertStringStartsWith('Detaching is not available', $exception->getMessage());
+        });
+
+        // Undefined relation
+        $this->assertException(RelationException::class, function () use ($mapper, $categories) {
+            $mapper->detachAll($categories, 'foobar');
+        }, function (RelationException $exception) {
+            $this->assertContains('is not defined', $exception->getMessage());
+        });
+    }
 }

@@ -52,16 +52,39 @@ trait AttachTrait
     }
 
     /**
-     * Removes attachments between the given models when models have same classes
+     * Removes attachments of the given models
      *
-     * @param ModelInterface[] $parents The models on the parent side of the relation. Not empty. All has the same class.
+     * @todo Documentation
+     * @param ModelInterface|ModelInterface[] $models The models
+     * @param string $relationName The relation name of the attachments to remove
+     * @throws DatabaseException
+     * @throws NotModelException
+     * @throws IncorrectModelException
+     * @throws RelationException
+     */
+    public function detachAll($models, string $relationName)
+    {
+        if (!is_array($models)) {
+            $models = [$models];
+        }
+
+        foreach (Helpers::groupModelsByClass($models) as $sameClassModels) {
+            $this->detachModelsOfSameClass($sameClassModels, $relationName);
+        }
+    }
+
+    /**
+     * Removes attachments of the given models when models have same classes
+     *
+     * @param ModelInterface[] $parents The models on the parent side of the relation. Not empty, all has the same class.
      * @param string $relationName The relation name which attaches the models
-     * @param ModelInterface[] $children The models on the child side of the relation. Not empty. All has the same class.
+     * @param ModelInterface[] $children If not null, only attachments to the given child side models are removed. If
+     *  array, not empty and all has the same class.
      * @throws DatabaseException
      * @throws IncorrectModelException
      * @throws RelationException
      */
-    protected function detachModelsOfSameClass(array $parents, string $relationName, array $children)
+    protected function detachModelsOfSameClass(array $parents, string $relationName, array $children = null)
     {
         $sampleModel = reset($parents);
         $relation = $sampleModel::getRelationOrFail($relationName);
