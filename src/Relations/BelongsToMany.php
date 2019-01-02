@@ -2,6 +2,7 @@
 
 namespace Finesse\Wired\Relations;
 
+use Finesse\MiniDB\Database;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
@@ -195,29 +196,14 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
         try {
             // Detaching other children (if required)
             if ($detachOther) {
-                // 2 deletions in the "replace'n'detach" case are combined into 1
-                if ($onMatch !== Mapper::REPLACE) {
-                    $database
-                        ->table($this->pivotTable)
-                        ->whereIn($this->pivotParentField, $parentIdentifiers)
-                        ->whereNotIn($this->pivotChildField, $childIdentifiers)
-                        ->delete();
-                }
+                $this->detachByIdentifiers($database, $parentIdentifiers, $childIdentifiers, true);
             }
 
             // Attaching the given children
             switch ($onMatch) {
                 /** @noinspection PhpMissingBreakStatementInspection */
                 case Mapper::REPLACE:
-                    $query = $database
-                        ->table($this->pivotTable)
-                        ->whereIn($this->pivotParentField, $parentIdentifiers);
-                    if ($detachOther) {
-                        // The combined "replace'n'detach" deletion
-                    } else {
-                        $query->whereIn($this->pivotChildField, $childIdentifiers);
-                    }
-                    $query->delete();
+                    $this->detachByIdentifiers($database, $parentIdentifiers, $childIdentifiers);
                     // intentional break skip
 
                 case Mapper::DUPLICATE:
@@ -267,26 +253,18 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
             return;
         }
 
-        try {
-            $sampleParent = reset($parents);
-            $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
+        $sampleParent = reset($parents);
+        $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
 
-            $query = $mapper->getDatabase()
-                ->table($this->pivotTable)
-                ->whereIn($this->pivotParentField, $parentIdentifiers);
-
-            if ($children !== null) {
-                $sampleChild = reset($children);
-                Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
-                $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
-
-                $query->whereIn($this->pivotChildField, $childIdentifiers);
-            }
-
-            $query->delete();
-        } catch (\Throwable $exception) {
-            throw Helpers::wrapException($exception);
+        if ($children === null) {
+            $childIdentifiers = null;
+        } else {
+            $sampleChild = reset($children);
+            Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
+            $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
         }
+
+        $this->detachByIdentifiers($mapper->getDatabase(), $parentIdentifiers, $childIdentifiers);
     }
 
     /**
@@ -310,6 +288,40 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     protected function getChildModelIdentifierField(): string
     {
         return $this->childIdentifierField ?? $this->childModelClass::getIdentifierField();
+    }
+
+    /**
+     * Removes the attachments between the parent and the child models
+     *
+     * @param Database $database The database access
+     * @param array $parentIdentifiers Identifiers of the parent models
+     * @param array|null $childIdentifiers Identifires of the child models
+     * @param bool $detachOther If true, the given child models will stay attached but other will be detached
+     * @throws DatabaseException
+     */
+    protected function detachByIdentifiers(
+        Database $database,
+        array $parentIdentifiers,
+        array $childIdentifiers = null,
+        bool $detachOther = false
+    ) {
+        try {
+            $query = $database
+                ->table($this->pivotTable)
+                ->whereIn($this->pivotParentField, $parentIdentifiers);
+
+            if ($childIdentifiers !== null) {
+                if ($detachOther) {
+                    $query->whereNotIn($this->pivotChildField, $childIdentifiers);
+                } else {
+                    $query->whereIn($this->pivotChildField, $childIdentifiers);
+                }
+            }
+
+            $query->delete();
+        } catch (\Throwable $exception) {
+            throw Helpers::wrapException($exception);
+        }
     }
 
     /**
