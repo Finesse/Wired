@@ -7,6 +7,7 @@ use Finesse\MiniDB\Exceptions\ExceptionInterface as DBException;
 use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\MiniDB\Exceptions\InvalidReturnValueException as DBInvalidReturnValueException;
+use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
 use Finesse\Wired\Exceptions\IncorrectModelException;
@@ -114,14 +115,20 @@ class Helpers
      *
      * @param array $objects
      * @param string $property
+     * @param bool $preserveKeys Must the input array keys be preserved in the output arrays
      * @return array[] The keys are the values of the properties. The values are the list of suitable objects.
      */
-    public static function groupObjectsByProperty(array $objects, string $property): array
+    public static function groupObjectsByProperty(array $objects, string $property, bool $preserveKeys = false): array
     {
         $groups = [];
 
-        foreach ($objects as $object) {
-            $groups[$object->$property][] = $object;
+        foreach ($objects as $index => $object) {
+            $value = $object->$property;
+            if ($preserveKeys) {
+                $groups[$value][$index] = $object;
+            } else {
+                $groups[$value][] = $object;
+            }
         }
 
         return $groups;
@@ -130,16 +137,22 @@ class Helpers
     /**
      * Groups array of arrays by a key values.
      *
-     * @param array $arrays
+     * @param array[] $arrays
      * @param string $key
-     * @return array[] The keys are the values of the keys. The values are the list of suitable arrays.
+     * @param bool $preserveKeys Must the input array keys be preserved in the output arrays
+     * @return array[][] The keys are the values of the keys. The values are the list of suitable arrays.
      */
-    public static function groupArraysByKey(array $arrays, string $key): array
+    public static function groupArraysByKey(array $arrays, string $key, bool $preserveKeys = false): array
     {
         $groups = [];
 
-        foreach ($arrays as $array) {
-            $groups[$array[$key]][] = $array;
+        foreach ($arrays as $index => $array) {
+            $value = $array[$key];
+            if ($preserveKeys) {
+                $groups[$value][$index] = $array;
+            } else {
+                $groups[$value][] = $array;
+            }
         }
 
         return $groups;
@@ -407,7 +420,6 @@ class Helpers
     /**
      * Returns items of the $new array that are not presented in the $old array or which values differ
      *
-     * @todo Test
      * @param array $old
      * @param array $new
      * @return array The keys are from the $new array, as well as the values
@@ -423,5 +435,26 @@ class Helpers
         }
 
         return $changed;
+    }
+
+    /**
+     * Makes a value to pass to the ModelQuery::where method to constraint it with the given model field values
+     *
+     * @todo Test
+     * @param array $fields
+     * @return callable|array
+     */
+    public static function makeFieldsQueryCriterion(array $fields)
+    {
+        return function ($query) use ($fields) {
+            /** @var Query $query */
+            foreach ($fields as $name => $value) {
+                if ($value === null) {
+                    $query->whereNull($name);
+                } else {
+                    $query->where($name, $value);
+                }
+            }
+        };
     }
 }

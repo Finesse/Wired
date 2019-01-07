@@ -129,6 +129,14 @@ class HelpersTest extends TestCase
         $this->assertEquals(7, $groups['Bill'][1]->id);
         $this->assertCount(1, $groups['Ivan']);
         $this->assertEquals(4, $groups['Ivan'][0]->id);
+
+        $groups = Helpers::groupObjectsByProperty([
+            'first' => $user1,
+            'second' => $user2,
+            'third' => $user3
+        ], 'name', true);
+        $this->assertEquals(['first', 'third'], array_keys($groups['Bill']));
+        $this->assertEquals(['second'], array_keys($groups['Ivan']));
     }
 
     /**
@@ -138,6 +146,11 @@ class HelpersTest extends TestCase
     {
         $this->assertEquals([], Helpers::groupArraysByKey([], 'foo'));
 
+        $users = [
+            'first' => ['id' => 8, 'name' => 'Bill'],
+            'second' => ['id' => 4, 'name' => 'Ivan'],
+            'third' => ['id' => 7, 'name' => 'Bill'],
+        ];
         $this->assertEquals(
             [
                 'Bill' => [
@@ -148,11 +161,19 @@ class HelpersTest extends TestCase
                     ['id' => 4, 'name' => 'Ivan'],
                 ],
             ],
-            Helpers::groupArraysByKey([
-                ['id' => 8, 'name' => 'Bill'],
-                ['id' => 4, 'name' => 'Ivan'],
-                ['id' => 7, 'name' => 'Bill'],
-            ], 'name')
+            Helpers::groupArraysByKey($users, 'name')
+        );
+        $this->assertEquals(
+            [
+                'Bill' => [
+                    'first' => ['id' => 8, 'name' => 'Bill'],
+                    'third' => ['id' => 7, 'name' => 'Bill'],
+                ],
+                'Ivan' => [
+                    'second' => ['id' => 4, 'name' => 'Ivan'],
+                ],
+            ],
+            Helpers::groupArraysByKey($users, 'name', true)
         );
     }
 
@@ -373,5 +394,26 @@ class HelpersTest extends TestCase
         $this->assertException(InvalidArgumentException::class, function () {
             Helpers::getModelIdentifierField(123);
         });
+    }
+
+    /**
+     * Tests the `getFieldsToUpdate` method
+     */
+    public function testGetFieldsToUpdate()
+    {
+        $this->assertEquals([
+            'bar' => '2',
+            'baq' => 4,
+        ], Helpers::getFieldsToUpdate([
+            'foo' => 1,
+            'bar' => 2,
+            'baz' => '3',
+        ], [
+            'foo' => 1,
+            'bar' => '2',
+            'baq' => 4,
+        ]));
+
+        $this->assertEquals([], Helpers::getFieldsToUpdate([], []));
     }
 }

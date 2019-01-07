@@ -185,8 +185,13 @@ class BelongsToManyTest extends TestCase
                 'text' => "$user->name with order $userKey has posted to $category->title with order $categoryKey"
             ];
         };
-        $users = $mapper->model(User::class)->find([11]);
-        $categories = $mapper->model(Category::class)->find([2, 7]);
+        $users = [
+            'uno' => $mapper->model(User::class)->find(11)
+        ];
+        $categories = array_combine(
+            ['one', 'two'],
+            $mapper->model(Category::class)->find([2, 7])
+        );
         $relation->attach($mapper, $users, $categories, Mapper::DUPLICATE, false, $getExtraFields);
         $posts = $mapper
             ->model(Post::class)
@@ -195,8 +200,8 @@ class BelongsToManyTest extends TestCase
             ->get();
         $this->assertCount(4, $posts);
         $this->assertAttributes([
-            'category_id' => $categories[1]->id,
-            'text' => 'Kenny with order 0 has posted to Lifehacks with order 1'
+            'category_id' => $categories['two']->id,
+            'text' => 'Kenny with order uno has posted to Lifehacks with order two'
         ], $posts[3]);
 
         // Duplicate and detach
@@ -244,6 +249,34 @@ class BelongsToManyTest extends TestCase
         }, function (InvalidArgumentException $exception) {
             $this->assertContains('unexpected $onMatch value', $exception->getMessage());
         });
+    }
+
+    /**
+     * Tests the `attach` method with update on match
+     */
+    public function testAttachWithUpdate()
+    {
+        $mapper = $this->makeMockDatabase();
+        $getPostExtraFields = function (User $user, Category $category, $userKey, $categoryKey) {
+            return [
+                'created_at' => time() - rand(1000, 100000),
+                'text' => "$user->name with key $userKey has posted to $category->title with key $categoryKey"
+            ];
+        };
+
+        // Simple case
+        $postsCount = $mapper->model(Post::class)->count();
+        $users = array_combine(
+            ['bob', 'frank'],
+            $mapper->model(User::class)->find([2, 6])
+        );
+        $categories = array_combine(
+            ['news', 'hockey'],
+            $mapper->model(Category::class)->find([1, 5])
+        );
+        $relation = User::categories();
+        $relation->attach($mapper, $users, $categories, Mapper::UPDATE, true, $getPostExtraFields);
+        $this->assertEquals($postsCount, $mapper->model(Post::class)->count());
     }
 
     /**

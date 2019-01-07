@@ -169,7 +169,6 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
      *
      * The attachments additional data are extra fields for the pivot table records (keys are field names)
      *
-     * @todo Test
      * @throws DatabaseException
      * @throws IncorrectModelException
      * @throws InvalidReturnValueException
@@ -190,8 +189,10 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
         $sampleParent = reset($parents);
         $sampleChild = reset($children);
         Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
-        $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
-        $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
+        $parentIdentifierField = $this->getParentModelIdentifierField($sampleParent);
+        $childIdentifierField = $this->getChildModelIdentifierField();
+        $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $parentIdentifierField, true);
+        $childIdentifiers = Helpers::getObjectsPropertyValues($children, $childIdentifierField, true);
 
         try {
             // Detaching other children (if required)
@@ -209,17 +210,21 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                 case Mapper::DUPLICATE:
                     $newAttachments = [];
 
-                    foreach ($parentIdentifiers as $parentKey => $parentId) {
-                        foreach ($childIdentifiers as $childKey => $childId) {
+                    foreach ($parents as $parentKey => $parent) {
+                        foreach ($children as $childKey => $child) {
                             $extraFields = $this->makeAttachmentExtraFields(
-                                $parents,
-                                $children,
+                                $parent,
+                                $child,
                                 $parentKey,
                                 $childKey,
                                 $getAttachmentData,
                                 '$getAttachmentData'
                             );
-                            $newAttachments[] = $this->makeAttachmentRow($parentId, $childId, $extraFields);
+                            $newAttachments[] = $this->makeAttachmentRow(
+                                $parent->$parentIdentifierField,
+                                $child->$childIdentifierField,
+                                $extraFields
+                            );
                         }
                     }
 
@@ -229,7 +234,42 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                     break;
 
                 case Mapper::UPDATE:
-                    // todo: Implement
+                    $groupedParents = Helpers::groupObjectsByProperty($parents, $parentIdentifierField, true);
+                    $groupedChildren = Helpers::groupObjectsByProperty($children, $childIdentifierField, true);
+
+                    $oldAttachments = $database
+                        ->table($this->pivotTable)
+                        ->whereIn($this->pivotParentField, $parentIdentifiers)
+                        ->whereIn($this->pivotChildField, $childIdentifiers)
+                        ->get();
+
+                    $groupedOldAttachments = [];
+                    foreach ($oldAttachments as $row) {
+                        $groupedOldAttachments[$row[$this->pivotParentField]][$row[$this->pivotChildField]][] = $row;
+                    }
+
+                    $newAttachments = [];
+                    foreach ($groupedParents as $parentId => $parentsGroup) {
+                        foreach ($groupedChildren as $childId => $childrenGroup) {
+                            foreach ($this->updateAttachmentsGroup(
+                                $database,
+                                $parentId,
+                                $childId,
+                                $parentsGroup,
+                                $childrenGroup,
+                                $groupedOldAttachments[$parentId][$childId] ?? [],
+                                $detachOther,
+                                $getAttachmentData
+                            ) as $attachment) {
+                                $newAttachments[] = $attachment;
+                            }
+                        }
+                    }
+
+                    if ($newAttachments) {
+                        $database->table($this->pivotTable)->insert($newAttachments);
+                    }
+                    break;
 
                 default:
                     throw new InvalidArgumentException(sprintf(
@@ -325,6 +365,85 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     }
 
     /**
+     * Makes the given parents and children be attached. Updates the pivot table rows if an attachment already exists.
+     * All the parents must have the same identifier as well as all the children.
+     *
+     * @param Database $database The database access
+     * @param mixed $parentId The parent model identifier in the table
+     * @param mixed $childId The child model identifier in the table
+     * @param ModelInterface[] $parents The parent models
+     * @param ModelInterface[] $children The child models
+     * @param array[] $oldAttachments The existing attachments between the models in the database (table rows). Must be
+     *  a not associative array.
+     * @param bool $detachExcess If true, the excess existing attachments will be removed
+     * @param callable|null $getAttachmentData A function generating the attachment additional fields
+     * @return array[] The pivot rows to insert to the database. Not inserted immediately to make it possible to insert
+     *  multiple groups attachments using a single query.
+     * @throws DatabaseException
+     * @throws InvalidReturnValueException
+     */
+    protected function updateAttachmentsGroup(
+        Database $database,
+        $parentId,
+        $childId,
+        array $parents,
+        array $children,
+        array $oldAttachments,
+        bool $detachExcess,
+        callable $getAttachmentData = null
+    ): array {
+        $newAttachments = [];
+        $oldAttachmentsCount = count($oldAttachments);
+        $oldIndex = 0;
+
+        foreach ($parents as $parentKey => $parent) {
+            foreach ($children as $childKey => $child) {
+                $extraFields = $this->makeAttachmentExtraFields(
+                    $parent,
+                    $child,
+                    $parentKey,
+                    $childKey,
+                    $getAttachmentData,
+                    '$getAttachmentData'
+                );
+
+                // If the new attachments count is more than the old attachments count, add a new attachment to the database
+                if ($oldIndex >= $oldAttachmentsCount) {
+                    $newAttachments[] = $this->makeAttachmentRow($parentId, $childId, $extraFields);
+                    continue;
+                }
+
+                // Update an existing attachment if anything has changed
+                if (
+                    $extraFields &&
+                    $fieldsToUpdate = Helpers::getFieldsToUpdate($oldAttachments[$oldIndex], $extraFields)
+                ) {
+                    $database
+                        ->table($this->pivotTable)
+                        ->where(Helpers::makeFieldsQueryCriterion($oldAttachments[$oldIndex]))
+                        ->limit(1)
+                        ->update($fieldsToUpdate);
+                }
+
+                $oldIndex += 1;
+            }
+        }
+
+        if ($detachExcess) {
+            // If the new attachments count is less than the old attachments count, remove the excess attachments from the database
+            for (; $oldIndex < $oldAttachmentsCount; ++$oldIndex) {
+                $database
+                    ->table($this->pivotTable)
+                    ->where(Helpers::makeFieldsQueryCriterion($oldAttachments[$oldIndex]))
+                    ->limit(1)
+                    ->delete();
+            }
+        }
+
+        return $newAttachments;
+    }
+
+    /**
      * Makes a database table row to represent an attachment
      *
      * @param mixed $parentId The parent model identifier in the table
@@ -355,15 +474,15 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
      * @throws InvalidReturnValueException
      */
     protected function makeAttachmentExtraFields(
-        array $parents,
-        array $children,
+        ModelInterface $parent,
+        ModelInterface $child,
         $parentKey,
         $childKey,
         callable $extraFieldsMaker = null,
         string $callbackArgumentName = '$extraFieldsMaker'
     ) {
         $extraFields = $extraFieldsMaker
-            ? $extraFieldsMaker($parents[$parentKey], $children[$childKey], $parentKey, $childKey)
+            ? $extraFieldsMaker($parent, $child, $parentKey, $childKey)
             : null;
 
         if ($extraFields !== null && !is_array($extraFields)) {
