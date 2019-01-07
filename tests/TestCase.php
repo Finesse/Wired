@@ -103,13 +103,13 @@ class TestCase extends BaseTestCase
         ]);
 
         $database->statement('
-            CREATE TABLE '.$database->addTablePrefix('followings').' (
+            CREATE TABLE '.$database->addTablePrefix('follows').' (
                 id INTEGER PRIMARY KEY ASC,
                 lead_id INTEGER,
                 led_id INTEGER
             )
         ');
-        $database->table('followings')->insert([
+        $database->table('follows')->insert([
             ['id' => 1, 'led_id' => 1, 'lead_id' => 2],
             ['id' => 2, 'led_id' => 1, 'lead_id' => 3],
             ['id' => 3, 'led_id' => 1, 'lead_id' => 4],

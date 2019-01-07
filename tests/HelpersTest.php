@@ -414,6 +414,12 @@ class HelpersTest extends TestCase
             'baq' => 4,
         ]));
 
-        $this->assertEquals([], Helpers::getFieldsToUpdate([], []));
+        $this->assertEquals([], Helpers::getFieldsToUpdate([
+            'foo' => 1,
+            'bar' => 2,
+        ], [
+            'foo' => 1,
+            'bar' => 2,
+        ]));
     }
 }

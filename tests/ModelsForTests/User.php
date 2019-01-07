@@ -39,11 +39,11 @@ class User extends Model
 
     public static function followers()
     {
-        return new BelongsToMany(self::class, 'lead_id', 'followings', 'led_id');
+        return new BelongsToMany(self::class, 'lead_id', 'follows', 'led_id');
     }
 
     public static function followings()
     {
-        return new BelongsToMany(self::class, 'led_id', 'followings', 'lead_id');
+        return new BelongsToMany(self::class, 'led_id', 'follows', 'lead_id');
     }
 }

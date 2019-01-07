@@ -208,7 +208,7 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                     // intentional break skip
 
                 case Mapper::DUPLICATE:
-                    $newAttachments = [];
+                    $insertAttachments = [];
 
                     foreach ($parents as $parentKey => $parent) {
                         foreach ($children as $childKey => $child) {
@@ -220,7 +220,7 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                                 $getAttachmentData,
                                 '$getAttachmentData'
                             );
-                            $newAttachments[] = $this->makeAttachmentRow(
+                            $insertAttachments[] = $this->makeAttachmentRow(
                                 $parent->$parentIdentifierField,
                                 $child->$childIdentifierField,
                                 $extraFields
@@ -228,8 +228,8 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                         }
                     }
 
-                    if ($newAttachments) {
-                        $database->table($this->pivotTable)->insert($newAttachments);
+                    if ($insertAttachments) {
+                        $database->table($this->pivotTable)->insert($insertAttachments);
                     }
                     break;
 
@@ -248,11 +248,12 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                         $groupedOldAttachments[$row[$this->pivotParentField]][$row[$this->pivotChildField]][] = $row;
                     }
 
-                    $newAttachments = [];
+                    $insertAttachments = [];
+                    $deleteQuery = null;
+
                     foreach ($groupedParents as $parentId => $parentsGroup) {
                         foreach ($groupedChildren as $childId => $childrenGroup) {
-                            foreach ($this->updateAttachmentsGroup(
-                                $database,
+                            $result = $this->updateAttachmentsGroup(
                                 $parentId,
                                 $childId,
                                 $parentsGroup,
@@ -260,14 +261,26 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                                 $groupedOldAttachments[$parentId][$childId] ?? [],
                                 $detachOther,
                                 $getAttachmentData
-                            ) as $attachment) {
-                                $newAttachments[] = $attachment;
+                            );
+
+                            if ($result['delete']) {
+                                $deleteQuery = ($deleteQuery ?? $database->table($this->pivotTable))->orWhere([
+                                    [$this->pivotParentField, $parentId],
+                                    [$this->pivotChildField, $childId],
+                                ]);
+                            }
+
+                            foreach ($result['insert'] as $row) {
+                                $insertAttachments[] = $row;
                             }
                         }
                     }
 
-                    if ($newAttachments) {
-                        $database->table($this->pivotTable)->insert($newAttachments);
+                    if ($deleteQuery) {
+                        $deleteQuery->delete();
+                    }
+                    if ($insertAttachments) {
+                        $database->table($this->pivotTable)->insert($insertAttachments);
                     }
                     break;
 
@@ -346,19 +359,19 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
         bool $detachOther = false
     ) {
         try {
-            $query = $database
-                ->table($this->pivotTable)
-                ->whereIn($this->pivotParentField, $parentIdentifiers);
+            $query = $database->table($this->pivotTable);
 
             if ($childIdentifiers !== null) {
                 if ($detachOther) {
-                    $query->whereNotIn($this->pivotChildField, $childIdentifiers);
+                    $query->whereNotIn($this->pivotChildField, $childIdentifiers)->orWhereNull($this->pivotChildField);
                 } else {
                     $query->whereIn($this->pivotChildField, $childIdentifiers);
                 }
             }
 
-            $query->delete();
+            $query
+                ->whereIn($this->pivotParentField, $parentIdentifiers)
+                ->delete();
         } catch (\Throwable $exception) {
             throw Helpers::wrapException($exception);
         }
@@ -368,7 +381,6 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
      * Makes the given parents and children be attached. Updates the pivot table rows if an attachment already exists.
      * All the parents must have the same identifier as well as all the children.
      *
-     * @param Database $database The database access
      * @param mixed $parentId The parent model identifier in the table
      * @param mixed $childId The child model identifier in the table
      * @param ModelInterface[] $parents The parent models
@@ -377,13 +389,13 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
      *  a not associative array.
      * @param bool $detachExcess If true, the excess existing attachments will be removed
      * @param callable|null $getAttachmentData A function generating the attachment additional fields
-     * @return array[] The pivot rows to insert to the database. Not inserted immediately to make it possible to insert
-     *  multiple groups attachments using a single query.
+     * @return mixed[] Array with 2 keys:
+     *  - 'delete' - `true` if the existing attachments must be removed from the database;
+     *  - 'insert' - the pivot rows to insert to the database;
      * @throws DatabaseException
      * @throws InvalidReturnValueException
      */
     protected function updateAttachmentsGroup(
-        Database $database,
         $parentId,
         $childId,
         array $parents,
@@ -392,13 +404,15 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
         bool $detachExcess,
         callable $getAttachmentData = null
     ): array {
-        $newAttachments = [];
         $oldAttachmentsCount = count($oldAttachments);
-        $oldIndex = 0;
+        $newAttachmentsCount = count($parents) * count($children);
+        $newAttachmentsExtraFields = [];
+        $insertAttachments = [];
+        $needsUpdate = false;
 
         foreach ($parents as $parentKey => $parent) {
             foreach ($children as $childKey => $child) {
-                $extraFields = $this->makeAttachmentExtraFields(
+                $newAttachmentsExtraFields[] = $this->makeAttachmentExtraFields(
                     $parent,
                     $child,
                     $parentKey,
@@ -406,41 +420,53 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
                     $getAttachmentData,
                     '$getAttachmentData'
                 );
+            }
+        }
 
-                // If the new attachments count is more than the old attachments count, add a new attachment to the database
-                if ($oldIndex >= $oldAttachmentsCount) {
-                    $newAttachments[] = $this->makeAttachmentRow($parentId, $childId, $extraFields);
-                    continue;
-                }
+        // Excess new attachments are inserted anyway
+        if ($oldAttachmentsCount < $newAttachmentsCount) {
+            for ($i = $oldAttachmentsCount; $i < $newAttachmentsCount; ++$i) {
+                $insertAttachments[] = $this->makeAttachmentRow($parentId, $childId, $newAttachmentsExtraFields[$i]);
+            }
+            $newAttachmentsCount = $oldAttachmentsCount;
+        }
+        // After this line $oldAttachmentsCount >= $newAttachmentsCount
 
-                // Update an existing attachment if anything has changed
+        // A single update query can be performed here when there are only 1 old and 1 new attachment
+
+        if ($oldAttachmentsCount === $newAttachmentsCount) {
+            // When number of the old attachments matches number of the new relations, there is a chance that the
+            // attachments lists match and an update is not required
+            for ($i = 0; $i < $oldAttachmentsCount; ++$i) {
                 if (
-                    $extraFields &&
-                    $fieldsToUpdate = Helpers::getFieldsToUpdate($oldAttachments[$oldIndex], $extraFields)
+                    $newAttachmentsExtraFields[$i] &&
+                    Helpers::getFieldsToUpdate($oldAttachments[$i], $newAttachmentsExtraFields[$i])
                 ) {
-                    $database
-                        ->table($this->pivotTable)
-                        ->where(Helpers::makeFieldsQueryCriterion($oldAttachments[$oldIndex]))
-                        ->limit(1)
-                        ->update($fieldsToUpdate);
+                    $needsUpdate = true;
+                    break;
                 }
+            }
+        } else {
+            $needsUpdate = true;
+        }
 
-                $oldIndex += 1;
+        // Making rows to insert (the existing are deleted)
+        if ($needsUpdate) {
+            for ($i = 0; $i < $oldAttachmentsCount; ++$i) {
+                if ($i < $newAttachmentsCount) {
+                    $insertAttachments[] = $newAttachmentsExtraFields[$i] + $oldAttachments[$i];
+                } elseif ($detachExcess) {
+                    break;
+                } else {
+                    $insertAttachments[] = $oldAttachments[$i];
+                }
             }
         }
 
-        if ($detachExcess) {
-            // If the new attachments count is less than the old attachments count, remove the excess attachments from the database
-            for (; $oldIndex < $oldAttachmentsCount; ++$oldIndex) {
-                $database
-                    ->table($this->pivotTable)
-                    ->where(Helpers::makeFieldsQueryCriterion($oldAttachments[$oldIndex]))
-                    ->limit(1)
-                    ->delete();
-            }
-        }
-
-        return $newAttachments;
+        return [
+            'delete' => $needsUpdate,
+            'insert' => $insertAttachments,
+        ];
     }
 
     /**

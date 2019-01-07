@@ -171,7 +171,7 @@ class BelongsToManyTest extends TestCase
             ['id' => 11, 'led_id' => 3, 'lead_id' => 6],
             ['id' => 12, 'led_id' => 3, 'lead_id' => 7],
         ], $mapper->getDatabase()
-            ->table('followings')
+            ->table('follows')
             ->whereIn('led_id', [2, 3])
             ->orderBy('id')
             ->get()
@@ -214,16 +214,16 @@ class BelongsToManyTest extends TestCase
             ['id' => 13, 'led_id' => 3, 'lead_id' => 7],
             ['id' => 14, 'led_id' => 3, 'lead_id' => 8],
         ], $mapper->getDatabase()
-            ->table('followings')
+            ->table('follows')
             ->where('led_id', $follower->id)
             ->orderBy('id')
             ->get()
         );
 
         // Empty models lists
-        $attachmentsCount = $mapper->getDatabase()->table('followings')->count();
+        $attachmentsCount = $mapper->getDatabase()->table('follows')->count();
         $relation->attach($mapper, [], [], Mapper::DUPLICATE, false);
-        $this->assertEquals($attachmentsCount, $mapper->getDatabase()->table('followings')->count());
+        $this->assertEquals($attachmentsCount, $mapper->getDatabase()->table('follows')->count());
 
         // Invalid extra fields return value
         $this->assertException(InvalidReturnValueException::class, function () use ($relation, $mapper, $follower, $followings) {
@@ -264,7 +264,7 @@ class BelongsToManyTest extends TestCase
             ];
         };
 
-        // Simple case
+        // Ordinary case with custom relation fields
         $postsCount = $mapper->model(Post::class)->count();
         $users = array_combine(
             ['bob', 'frank'],
@@ -277,6 +277,43 @@ class BelongsToManyTest extends TestCase
         $relation = User::categories();
         $relation->attach($mapper, $users, $categories, Mapper::UPDATE, true, $getPostExtraFields);
         $this->assertEquals($postsCount, $mapper->model(Post::class)->count());
+        $posts = $mapper->model(Post::class)->whereRelation('author', $users)->orderBy('key')->get();
+        $this->assertCount(4, $posts);
+        $this->assertAttributes(['key' => 1, 'author_id' => 6, 'category_id' => 1, 'text' => 'Frank with key frank has posted to News with key news'], $posts[0]);
+        $this->assertAttributes(['key' => 5, 'author_id' => 6, 'category_id' => 5, 'text' => 'Frank with key frank has posted to Hockey with key hockey'], $posts[1]);
+        $this->assertAttributes(['key' => 17, 'author_id' => 2, 'category_id' => 1, 'text' => 'Bob with key bob has posted to News with key news'], $posts[2]);
+        $this->assertAttributes(['key' => 18, 'author_id' => 2, 'category_id' => 5, 'text' => 'Bob with key bob has posted to Hockey with key hockey'], $posts[3]);
+
+        // Repeating models
+        $relation->attach($mapper, [$users['bob']], array_fill(0, 3, $categories['news']), Mapper::UPDATE, false, $getPostExtraFields);
+        $this->assertEquals($postsCount + 2, $mapper->model(Post::class)->count());
+        $posts = $mapper->model(Post::class)->whereRelation('author', $users['bob'])->orderBy('key')->get();
+        $this->assertCount(4, $posts);
+        $this->assertAttributes(['key' => 17, 'category_id' => 1], $posts[0]);
+        $this->assertAttributes(['key' => 18, 'category_id' => 5], $posts[1]);
+        $this->assertAttributes(['key' => 19, 'category_id' => 1], $posts[2]);
+        $this->assertAttributes(['key' => 20, 'category_id' => 1], $posts[3]);
+
+        // Update one attachment and keep other between 2 models that are attached multiple times
+        $relation->attach($mapper, [$users['bob']], [$categories['news']], Mapper::UPDATE, false, function () {
+            return ['text' => 'Update'];
+        });
+        $this->assertEquals($postsCount + 2, $mapper->model(Post::class)->count());
+        $posts = $mapper->model(Post::class)->whereRelation('author', $users['bob'])->whereRelation('category', $categories['news'])->orderBy('key')->get();
+        $this->assertCount(3, $posts);
+        $this->assertAttributes(['key' => 17, 'text' => 'Update'], $posts[0]);
+        $this->assertAttributeEquals(19, 'key', $posts[1]);
+        $this->assertAttributeNotEquals('Update', 'text', $posts[1]);
+        $this->assertAttributeEquals(20, 'key', $posts[2]);
+        $this->assertAttributeNotEquals('Update', 'text', $posts[2]);
+
+        // Non-changing attachment
+        $relation = User::followings();
+        $follows = $mapper->getDatabase()->table('follows')->orderBy('id')->get();
+        $follower = $mapper->model(User::class)->find(1);
+        $followings = $mapper->model(User::class)->find([2, 3, 4]);
+        $relation->attach($mapper, [$follower], $followings, Mapper::UPDATE, true);
+        $this->assertEquals($follows, $mapper->getDatabase()->table('follows')->orderBy('id')->get());
     }
 
     /**

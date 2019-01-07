@@ -7,7 +7,6 @@ use Finesse\MiniDB\Exceptions\ExceptionInterface as DBException;
 use Finesse\MiniDB\Exceptions\IncorrectQueryException as DBIncorrectQueryException;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\MiniDB\Exceptions\InvalidReturnValueException as DBInvalidReturnValueException;
-use Finesse\MiniDB\Query;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
 use Finesse\Wired\Exceptions\IncorrectModelException;
@@ -435,26 +434,5 @@ class Helpers
         }
 
         return $changed;
-    }
-
-    /**
-     * Makes a value to pass to the ModelQuery::where method to constraint it with the given model field values
-     *
-     * @todo Test
-     * @param array $fields
-     * @return callable|array
-     */
-    public static function makeFieldsQueryCriterion(array $fields)
-    {
-        return function ($query) use ($fields) {
-            /** @var Query $query */
-            foreach ($fields as $name => $value) {
-                if ($value === null) {
-                    $query->whereNull($name);
-                } else {
-                    $query->where($name, $value);
-                }
-            }
-        };
     }
 }
