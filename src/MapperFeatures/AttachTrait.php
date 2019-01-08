@@ -15,7 +15,6 @@ use Finesse\Wired\Relations\AttachableRelationInterface;
 /**
  * A set of methods to manage models attachments (described by AttachableRelationInterface)
  *
- * @todo Documentation
  * @mixin Mapper
  * @author Surgie
  */
@@ -56,7 +55,7 @@ trait AttachTrait
      *  - Parent model key in the $parents list,
      *  - Child model key in the $children list
      * @param bool $simpleMode If true, the existing models attachments will be removed and inserted again which can
-     *  cause a data loss (is the attachments have some extra data). If false, no attachment data will be lost but is
+     *  cause a data loss (is the attachments have some extra data). If false, no attachment data will be lost but it
      *  has a higher risk of an error caused by a race condition.
      * @throws DatabaseException
      * @throws IncorrectModelException

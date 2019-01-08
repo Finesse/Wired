@@ -215,8 +215,61 @@ You can also use the `orWhereRelation`, `whereNoRelation` and `orWhereNoRelation
 
 ## Attaching related models
 
-If you need to attach a parent model to a child model you can use the helper method instead of setting a foreign key
-value manually:
+### Many to many
+
+There is the `attach` method to add attachments between models to the database:
+
+```php
+$mapper->attach($post, 'tags', $tags);
+``` 
+
+Where `tags` is a relation name of the `Post` model.
+
+It adds records to the pivot table even if the models are already attached.
+If you need to replace all the `$post` tags with the given tags, call the `setAttachments` method:
+
+```php
+$mapper->setAttachments($post, 'tags', $tags);
+``` 
+
+If you need to attach only such tags that are not attached, use the `setAttachments` with the corresponding argument:
+
+```php
+$mapper->setAttachments($post, 'tags', $tags, true);
+``` 
+
+It will make the database have all the previous and the new post tags and won't add duplicates.
+
+You can set additional fields for the pivot table records (both methods support it):
+
+```php
+$mapper->setAttachments($post, 'tags', $tags, false, function ($post, $tag, $postIndex, $tagIndex) {
+    return ['order' => $tagIndex];
+});
+```
+
+Use the `detach` method to detach models:
+
+```php
+$mapper->detach($post, 'tags', $tags);
+```
+
+You can also detach all the post tags:
+
+```php
+$mapper->detachAll($post, 'tags');
+```
+
+### One to many
+
+It doesn't support changing records in a database because there is an ambiguity, a detachment can be done multiple ways:
+
+- "Many" side models are deleted
+- "Many" side models get `null` as the foreign key field value
+
+The decision depends on the business logic.
+
+There are methods to help you do it manually. Set a foreign key field value:
 
 ```php
 $user = $orm->model(User::class)->find(16);
@@ -228,7 +281,7 @@ $post->associate('author', $user); // 'author' is the relation name defined in t
 $orm->save($post);
 ```
 
-It works only for `BelongsTo` relations. There is a method for detaching a parent model:
+Unset a foreign key field value:
 
 ```php
 $post->dissociate('author'); // Or $post->associate('author', null);
