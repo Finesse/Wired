@@ -4,6 +4,8 @@ namespace Finesse\Wired\Relations;
 
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\InvalidArgumentException;
+use Finesse\Wired\Exceptions\InvalidReturnValueException;
 use Finesse\Wired\Mapper;
 use Finesse\Wired\ModelInterface;
 
@@ -34,6 +36,8 @@ interface AttachableRelationInterface
      * @return void
      * @throws DatabaseException
      * @throws IncorrectModelException
+     * @throws InvalidReturnValueException
+     * @throws InvalidArgumentException
      */
     public function attach(
         Mapper $mapper,

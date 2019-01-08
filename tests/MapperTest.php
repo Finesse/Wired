@@ -9,6 +9,7 @@ use Finesse\Wired\Exceptions\RelationException;
 use Finesse\Wired\Mapper;
 use Finesse\Wired\Model;
 use Finesse\Wired\ModelQuery;
+use Finesse\Wired\Relations\BelongsToMany;
 use Finesse\Wired\Tests\ModelsForTests\Category;
 use Finesse\Wired\Tests\ModelsForTests\Post;
 use Finesse\Wired\Tests\ModelsForTests\User;
@@ -361,6 +362,86 @@ class MapperTest extends TestCase
                 'The relation `author` is not defined in the '.Category::class.' model',
                 $exception->getMessage()
             );
+        });
+    }
+
+    /**
+     * Tests the `attach` method
+     */
+    public function testAttach()
+    {
+        $mapper = $this->makeMockDatabase();
+
+        // The database logic is pretty extensive and it's already tested comprehensively therefore it's skipped here
+
+        // One model on each side
+        $user = new class extends User {
+            public static $relationMock;
+            public static function testRelation() {
+                return static::$relationMock;
+            }
+        };
+        $post = new Post;
+        $getAttachmentData = function() {};
+        $user::$relationMock = $this->createMock(BelongsToMany::class);
+        $user::$relationMock
+            ->expects($this->once())
+            ->method('attach')
+            ->with($mapper, [$user], [$post], Mapper::DUPLICATE, false, $getAttachmentData);
+        $mapper->attach($user, 'testRelation', $post, $getAttachmentData);
+
+        // Many models
+        $category = new class extends Category {
+            public static $relationMock;
+            public static function testRelation() {
+                return static::$relationMock;
+            }
+        };
+        $posts = [new Post, new Post, new Post];
+        $user::$relationMock = $this->createMock(BelongsToMany::class);
+        $user::$relationMock
+            ->expects($this->exactly(2))
+            ->method('attach')
+            ->withConsecutive(
+                [$mapper, [$user], $posts, Mapper::DUPLICATE, false, null],
+                [$mapper, [$user], [$user], Mapper::DUPLICATE, false, null]
+            );
+        $category::$relationMock = $this->createMock(BelongsToMany::class);
+        $category::$relationMock
+            ->expects($this->exactly(2))
+            ->method('attach')
+            ->withConsecutive(
+                [$mapper, [$category], $posts, Mapper::DUPLICATE, false, null],
+                [$mapper, [$category], [$user], Mapper::DUPLICATE, false, null]
+            );
+        $mapper->attach([$user, $category], 'testRelation', array_merge($posts, [$user]));
+
+        // Synchronize
+        $user::$relationMock = $this->createMock(BelongsToMany::class);
+        $user::$relationMock
+            ->expects($this->exactly(3))
+            ->method('attach')
+            ->withConsecutive(
+                [$mapper, [$user], [$post], Mapper::UPDATE, true, null],
+                [$mapper, [$user], [$post], Mapper::UPDATE, false, $getAttachmentData],
+                [$mapper, [$user], [$post], Mapper::REPLACE, true, null]
+            );
+        $mapper->setAttachments($user, 'testRelation', $post);
+        $mapper->setAttachments($user, 'testRelation', $post, true, $getAttachmentData);
+        $mapper->setAttachments($user, 'testRelation', $post, false, null, true);
+
+        // Unsupported relation
+        $this->assertException(RelationException::class, function () use ($mapper, $user, $post) {
+            $mapper->attach($user, 'posts', $post);
+        }, function (RelationException $exception) {
+            $this->assertStringStartsWith('Attaching is not available', $exception->getMessage());
+        });
+
+        // Undefined relation
+        $this->assertException(RelationException::class, function () use ($mapper, $user, $post) {
+            $mapper->attach($user, 'foobar', $post);
+        }, function (RelationException $exception) {
+            $this->assertContains('is not defined', $exception->getMessage());
         });
     }
 

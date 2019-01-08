@@ -4,7 +4,6 @@ namespace Finesse\Wired\Relations;
 
 use Finesse\MiniDB\Database;
 use Finesse\Wired\Exceptions\DatabaseException;
-use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\InvalidReturnValueException;
@@ -165,13 +164,9 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      *
      * The attachments additional data are extra fields for the pivot table records (keys are field names)
-     *
-     * @throws DatabaseException
-     * @throws IncorrectModelException
-     * @throws InvalidReturnValueException
      */
     public function attach(
         Mapper $mapper,
