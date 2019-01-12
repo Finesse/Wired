@@ -78,9 +78,21 @@ interface ModelInterface
      *
      * @param string $relationName Relation name
      * @param ModelInterface[]|ModelInterface|null $relative An array of relative instances (if relation is "-to-many"),
-     *     a single instance (if relation is "-to-one") or null (if relation is "-to-one").
+     *  a single instance (if relation is "-to-one") or null (if relation is "-to-one").
+     * @return void
      */
     public function setLoadedRelatives(string $relationName, $relative);
+
+    /**
+     * Removes the loaded relative model or models from this model instance so that the relation is considered as not
+     * loaded. If the relative models are not loaded, does nothing.
+     *
+     * This method will be added in the next major release.
+     *
+     * @param string $relationName Relation name
+     * @return void
+     */
+    // public function unsetLoadedRelatives(string $relationName);
 
     /**
      * Checks whether relative models are loaded and set to this model instance.
@@ -97,8 +109,8 @@ interface ModelInterface
      *
      * @param string $relationName Relation name
      * @return ModelInterface[]|ModelInterface|null An array of relative instances (if relation is "-to-many"), a single
-     *     instance (if relation is "-to-one") or null (if relation is "-to-one"). Returns null is the relatives are not
-     *     loaded and set.
+     *  instance (if relation is "-to-one") or null (if relation is "-to-one"). Returns null is the relatives are not
+     *  loaded and set.
      */
     public function getLoadedRelatives(string $relationName);
 }

@@ -182,6 +182,14 @@ abstract class Model implements ModelInterface
     /**
      * {@inheritDoc}
      */
+    public function unsetLoadedRelatives(string $relationName)
+    {
+        unset($this->loadedRelatives[$relationName]);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function doesHaveLoadedRelatives(string $relationName): bool
     {
         return array_key_exists($relationName, $this->loadedRelatives);

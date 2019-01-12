@@ -112,12 +112,21 @@ class ModelTest extends TestCase
         $this->assertFalse($model->doesHaveLoadedRelatives('post'));
         $this->assertNull($model->getLoadedRelatives('post'));
 
+        $model->unsetLoadedRelatives('post');
+        $this->assertFalse($model->doesHaveLoadedRelatives('post'));
+        $this->assertNull($model->getLoadedRelatives('post'));
+
         $model->setLoadedRelatives('post', new Post());
         $this->assertTrue($model->doesHaveLoadedRelatives('post'));
         $this->assertInstanceOf(Post::class, $model->getLoadedRelatives('post'));
 
         $model->setLoadedRelatives('post', null);
         $this->assertTrue($model->doesHaveLoadedRelatives('post'));
+        $this->assertNull($model->getLoadedRelatives('post'));
+
+        $model->setLoadedRelatives('post', new Post());
+        $model->unsetLoadedRelatives('post');
+        $this->assertFalse($model->doesHaveLoadedRelatives('post'));
         $this->assertNull($model->getLoadedRelatives('post'));
     }
 
