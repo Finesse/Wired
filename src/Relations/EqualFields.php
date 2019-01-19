@@ -165,13 +165,7 @@ abstract class EqualFields implements RelationInterface
         }
 
         $searchValues = Helpers::getObjectsPropertyValues($models, $this->getChildModelField(), true);
-
-        if ($searchValues) {
-            $query->whereIn($this->getParentModelFieldFromQuery($query), $searchValues);
-        } else {
-            // If the relatives list is empty, the where criterion is equivalent to false
-            $query->whereRaw('0');
-        }
+        $query->whereIn($this->getParentModelFieldFromQuery($query), $searchValues);
     }
 
     /**
