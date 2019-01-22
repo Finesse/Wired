@@ -430,6 +430,14 @@ class MapperTest extends TestCase
         $mapper->setAttachments($user, 'testRelation', $post, true, $getAttachmentData);
         $mapper->setAttachments($user, 'testRelation', $post, false, null, true);
 
+        // Zero child models (equivalent to detach all)
+        $user::$relationMock = $this->createMock(BelongsToMany::class);
+        $user::$relationMock
+            ->expects($this->once())
+            ->method('attach')
+            ->with($mapper, [$user], [], Mapper::UPDATE, true, null);
+        $mapper->setAttachments($user, 'testRelation', []);
+
         // Unsupported relation
         $this->assertException(RelationException::class, function () use ($mapper, $user, $post) {
             $mapper->attach($user, 'posts', $post);

@@ -53,11 +53,10 @@ interface AttachableRelationInterface
      *
      * @param Mapper $mapper A mapper to access the database
      * @param ModelInterface[] $parents The parent models. All the models has the same class.
-     * @param ModelInterface[]|null $children If not null, only the attachments with the given child models must be
-     *  removed. All the models has the same class.
+     * @param ModelInterface[]|null $children The child models. All the models has the same class.
      * @return void
      * @throws DatabaseException
      * @throws IncorrectModelException
      */
-    public function detach(Mapper $mapper, array $parents, array $children = null);
+    public function detach(Mapper $mapper, array $parents, array $children);
 }

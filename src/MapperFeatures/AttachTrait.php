@@ -123,13 +123,7 @@ trait AttachTrait
      */
     public function detachAll($models, string $relationName)
     {
-        if (!is_array($models)) {
-            $models = [$models];
-        }
-
-        foreach (Helpers::groupModelsByClass($models) as $sameClassModels) {
-            $this->detachModelsOfSameClass($sameClassModels, $relationName);
-        }
+        $this->attachWithDetails($models, $relationName, [], Mapper::REPLACE, true, null, true);
     }
 
     /**
@@ -139,6 +133,7 @@ trait AttachTrait
      * @param ModelInterface|ModelInterface[] $parents The models on the parent side of the relation
      * @param string $relationName The relation name which should attache the models
      * @param ModelInterface|ModelInterface[] $children The models on the child side of the relation
+     * @param bool $detachingSemantic True, if the method is actually called for detaching (used for error messages)
      * @see AttachableRelationInterface::attach for the other arguments
      * @throws DatabaseException
      * @throws IncorrectModelException
@@ -152,7 +147,8 @@ trait AttachTrait
         $children,
         string $onMatch,
         bool $detachOther,
-        callable $getAttachmentData = null
+        callable $getAttachmentData = null,
+        bool $detachingSemantic = false
     ) {
         if (!is_array($parents)) {
             $parents = [$parents];
@@ -162,11 +158,19 @@ trait AttachTrait
         }
 
         $groupedParents = Helpers::groupModelsByClass($parents);
-        $groupedChildren = Helpers::groupModelsByClass($children);
+        $groupedChildren = Helpers::groupModelsByClass($children) ?: [[]]; // Attaching zero children makes an effect when $detachOther is true
 
         foreach ($groupedParents as $parents) {
             foreach ($groupedChildren as $children) {
-                $this->attachModelsOfSameClass($parents, $relationName, $children, $onMatch, $detachOther, $getAttachmentData);
+                $this->attachModelsOfSameClass(
+                    $parents,
+                    $relationName,
+                    $children,
+                    $onMatch,
+                    $detachOther,
+                    $getAttachmentData,
+                    $detachingSemantic
+                );
             }
         }
     }
@@ -175,6 +179,7 @@ trait AttachTrait
      * Creates attachments between the given models when models have same classes
      *
      * @param string $relationName The relation name which should attache the models
+     * @param bool $detachingSemantic True, if the method is actually called for detaching (used for error messages)
      * @see AttachableRelationInterface::attach for the other arguments
      * @throws DatabaseException
      * @throws IncorrectModelException
@@ -187,7 +192,8 @@ trait AttachTrait
         array $children,
         string $onMatch,
         bool $detachOther,
-        callable $getAttachmentData = null
+        callable $getAttachmentData = null,
+        bool $detachingSemantic = false
     ) {
         $sampleModel = reset($parents);
         $relation = $sampleModel::getRelationOrFail($relationName);
@@ -197,7 +203,7 @@ trait AttachTrait
             return;
         }
 
-        throw new RelationException("Attaching is not available for the `$relationName` relation of the ".get_class($sampleModel)." model");
+        throw $this->makeAttachableNotAvailableException($detachingSemantic, $relationName, $sampleModel);
     }
 
     /**
@@ -205,13 +211,12 @@ trait AttachTrait
      *
      * @param ModelInterface[] $parents The models on the parent side of the relation. Not empty, all has the same class.
      * @param string $relationName The relation name which attaches the models
-     * @param ModelInterface[] $children If not null, only attachments to the given child side models are removed. If
-     *  array, not empty and all has the same class.
+     * @param ModelInterface[] $children The models on the child side of the relation. Not empty, all has the same class.
      * @throws DatabaseException
      * @throws IncorrectModelException
      * @throws RelationException
      */
-    protected function detachModelsOfSameClass(array $parents, string $relationName, array $children = null)
+    protected function detachModelsOfSameClass(array $parents, string $relationName, array $children)
     {
         $sampleModel = reset($parents);
         $relation = $sampleModel::getRelationOrFail($relationName);
@@ -221,6 +226,27 @@ trait AttachTrait
             return;
         }
 
-        throw new RelationException("Detaching is not available for the `$relationName` relation of the ".get_class($sampleModel)." model");
+        throw $this->makeAttachableNotAvailableException(true, $relationName, $sampleModel);
+    }
+
+    /**
+     * Makes an exception object that tells that attaching or detaching is not available for a model object
+     *
+     * @param bool $isDetaching True - detaching error, false - attaching error
+     * @param string $relationName The relation name that was used to attach or detach
+     * @param ModelInterface $sampleModel The model object
+     * @return RelationException
+     */
+    protected function makeAttachableNotAvailableException(
+        bool $isDetaching,
+        string $relationName,
+        ModelInterface $sampleModel
+    ) {
+        return new RelationException(sprintf(
+            '%s is not available for the `%s` relation of the %s model',
+            $isDetaching ? 'Detaching' : 'Attaching',
+            $relationName,
+            get_class($sampleModel)
+        ));
     }
 }

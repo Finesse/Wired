@@ -176,14 +176,16 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
         bool $detachOther,
         callable $getAttachmentData = null
     ) {
-        if (!$parents || !$children) {
+        if (!$parents) {
             return;
         }
 
         $database = $mapper->getDatabase();
         $sampleParent = reset($parents);
-        $sampleChild = reset($children);
-        Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
+        if ($children) {
+            $sampleChild = reset($children);
+            Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
+        }
         $parentIdentifierField = $this->getParentModelIdentifierField($sampleParent);
         $childIdentifierField = $this->getChildModelIdentifierField();
         $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $parentIdentifierField, true);
@@ -295,22 +297,17 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
     /**
      * @inheritDoc
      */
-    public function detach(Mapper $mapper, array $parents, array $children = null)
+    public function detach(Mapper $mapper, array $parents, array $children)
     {
-        if (!$parents || $children !== null && !$children) {
+        if (!$parents || !$children) {
             return;
         }
 
         $sampleParent = reset($parents);
+        $sampleChild = reset($children);
+        Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
         $parentIdentifiers = Helpers::getObjectsPropertyValues($parents, $this->getParentModelIdentifierField($sampleParent), true);
-
-        if ($children === null) {
-            $childIdentifiers = null;
-        } else {
-            $sampleChild = reset($children);
-            Helpers::checkModelObjectClass($sampleChild, $this->childModelClass);
-            $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
-        }
+        $childIdentifiers = Helpers::getObjectsPropertyValues($children, $this->getChildModelIdentifierField(), true);
 
         $this->detachByIdentifiers($mapper->getDatabase(), $parentIdentifiers, $childIdentifiers);
     }
@@ -343,25 +340,23 @@ class BelongsToMany implements RelationInterface, AttachableRelationInterface
      *
      * @param Database $database The database access
      * @param array $parentIdentifiers Identifiers of the parent models
-     * @param array|null $childIdentifiers Identifires of the child models
+     * @param array $childIdentifiers Identifires of the child models
      * @param bool $detachOther If true, the given child models will stay attached but other will be detached
      * @throws DatabaseException
      */
     protected function detachByIdentifiers(
         Database $database,
         array $parentIdentifiers,
-        array $childIdentifiers = null,
+        array $childIdentifiers,
         bool $detachOther = false
     ) {
         try {
             $query = $database->table($this->pivotTable);
 
-            if ($childIdentifiers !== null) {
-                if ($detachOther) {
-                    $query->whereNotIn($this->pivotChildField, $childIdentifiers)->orWhereNull($this->pivotChildField);
-                } else {
-                    $query->whereIn($this->pivotChildField, $childIdentifiers);
-                }
+            if ($detachOther) {
+                $query->whereNotIn($this->pivotChildField, $childIdentifiers)->orWhereNull($this->pivotChildField);
+            } else {
+                $query->whereIn($this->pivotChildField, $childIdentifiers);
             }
 
             $query
