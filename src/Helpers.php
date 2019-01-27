@@ -9,6 +9,7 @@ use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentExcep
 use Finesse\MiniDB\Exceptions\InvalidReturnValueException as DBInvalidReturnValueException;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\ExceptionInterface;
+use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\IncorrectQueryException;
 use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\InvalidReturnValueException;
@@ -38,6 +39,34 @@ class Helpers
                 ModelInterface::class
             ));
         }
+    }
+
+    /**
+     * Checks that the given value is a model of the given class
+     *
+     * @param ModelInterface|mixed $model The value
+     * @param string $expectedClassName Class name
+     * @throws NotModelException If the given value is not a model object
+     * @throws IncorrectModelException If the given model has a wrong class
+     */
+    public static function checkModelObjectClass($model, string $expectedClassName)
+    {
+        if ($model instanceof $expectedClassName) {
+            return;
+        }
+
+        if ($model instanceof ModelInterface) {
+            throw new IncorrectModelException(sprintf(
+                'The given model %s is not a %s model',
+                get_class($model),
+                $expectedClassName
+            ));
+        }
+
+        throw new NotModelException(sprintf(
+            'The given value (%s) is not a model',
+            is_object($model) ? get_class($model) : gettype($model)
+        ));
     }
 
     /**
@@ -85,14 +114,44 @@ class Helpers
      *
      * @param array $objects
      * @param string $property
+     * @param bool $preserveKeys Must the input array keys be preserved in the output arrays
      * @return array[] The keys are the values of the properties. The values are the list of suitable objects.
      */
-    public static function groupObjectsByProperty(array $objects, string $property): array
+    public static function groupObjectsByProperty(array $objects, string $property, bool $preserveKeys = false): array
     {
         $groups = [];
 
-        foreach ($objects as $object) {
-            $groups[$object->$property][] = $object;
+        foreach ($objects as $index => $object) {
+            $value = $object->$property;
+            if ($preserveKeys) {
+                $groups[$value][$index] = $object;
+            } else {
+                $groups[$value][] = $object;
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * Groups array of arrays by a key values.
+     *
+     * @param array[] $arrays
+     * @param string $key
+     * @param bool $preserveKeys Must the input array keys be preserved in the output arrays
+     * @return array[][] The keys are the values of the keys. The values are the list of suitable arrays.
+     */
+    public static function groupArraysByKey(array $arrays, string $key, bool $preserveKeys = false): array
+    {
+        $groups = [];
+
+        foreach ($arrays as $index => $array) {
+            $value = $array[$key];
+            if ($preserveKeys) {
+                $groups[$value][$index] = $array;
+            } else {
+                $groups[$value][] = $array;
+            }
         }
 
         return $groups;
@@ -319,5 +378,61 @@ class Helpers
     public static function canCallMethod($object, string $name): bool
     {
         return is_callable([$object, $name]);
+    }
+
+    /**
+     * Gets the model identifier field name from a model instance, a model class name or a query object
+     *
+     * @param string|ModelQuery|ModelInterface $hint
+     * @return string
+     * @throws IncorrectQueryException
+     * @throws InvalidArgumentException
+     * @throws NotModelException
+     */
+    public static function getModelIdentifierField($hint): string
+    {
+        if ($hint instanceof ModelInterface) {
+            return $hint::getIdentifierField();
+        }
+
+        if ($hint instanceof ModelQuery) {
+            $hint = $hint->getModelClass();
+            if ($hint === null) {
+                throw new IncorrectQueryException("The given query doesn't have a context model");
+            }
+        }
+
+        if (is_string($hint)) {
+            static::checkModelClass('The given string', $hint);
+            /** @var ModelInterface $hint */
+            return $hint::getIdentifierField();
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'The argument expected to be a %s object, a % object or a model class name, %s given',
+            ModelQuery::class,
+            ModelInterface::class,
+            is_object($hint) ? get_class($hint) : gettype($hint)
+        ));
+    }
+
+    /**
+     * Returns items of the $new array that are not presented in the $old array or which values differ
+     *
+     * @param array $old
+     * @param array $new
+     * @return array The keys are from the $new array, as well as the values
+     */
+    public static function getFieldsToUpdate(array $old, array $new): array
+    {
+        $changed = [];
+
+        foreach ($new as $key => $value) {
+            if (!array_key_exists($key, $old) || $value !== $old[$key]) {
+                $changed[$key] = $value;
+            }
+        }
+
+        return $changed;
     }
 }

@@ -27,6 +27,7 @@ interface RelationInterface
      *  be related to the specified model". Models array means "must be related to one of the specified models". Closure
      *  means "must be related to a model that fit the clause in the closure". Null means "must be related to at least
      *  one model".
+     * @return void
      * @throws RelationException
      * @throws NotModelException
      * @throws InvalidArgumentException
@@ -46,6 +47,7 @@ interface RelationInterface
      *  class.
      * @param \Closure|null $constraint Relation constraint. Closure means "the relative models must fit the clause in
      *  the closure". Null means "no constraint".
+     * @return void
      * @throws DatabaseException
      * @throws IncorrectModelException
      * @throws InvalidReturnValueException

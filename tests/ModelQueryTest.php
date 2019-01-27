@@ -170,7 +170,7 @@ class ModelQueryTest extends TestCase
     }
 
     /**
-     * Tests the `makeModelSubQuery` method
+     * Tests the `makeSubQueryAliasIfRequired`, `makeSubQuery` and `makeModelSubQuery` methods
      */
     public function testMakeModelSubQuery()
     {
@@ -192,6 +192,17 @@ class ModelQueryTest extends TestCase
         // Wrong model name
         $this->assertException(NotModelException::class, function () use ($query) {
             $query->makeModelSubQuery(self::class);
+        });
+
+        // Deep call stack error
+        $baseQuery = new class ($mapper->getDatabase()) extends Query {
+            public function getTableIdentifier() {
+                throw new DBDatabaseException;
+            }
+        };
+        $query = new ModelQuery($baseQuery);
+        $this->assertException(DatabaseException::class, function () use ($query) {
+            $query->makeModelSubQuery(Post::class);
         });
     }
 

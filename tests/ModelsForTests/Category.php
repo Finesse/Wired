@@ -4,6 +4,7 @@ namespace Finesse\Wired\Tests\ModelsForTests;
 
 use Finesse\Wired\Model;
 use Finesse\Wired\Relations\BelongsTo;
+use Finesse\Wired\Relations\BelongsToMany;
 use Finesse\Wired\Relations\HasMany;
 
 /**
@@ -12,6 +13,7 @@ use Finesse\Wired\Relations\HasMany;
  * @property-read Category|null $parent Parent category (if loaded)
  * @property-read Category[] $children Child categories (if loaded)
  * @property-read Post[] $posts Category posts (if loaded)
+ * @property-read User[] $authors Category posts authors (if loaded)
  *
  * @author Surgie
  */
@@ -39,5 +41,10 @@ class Category extends Model
     public static function posts()
     {
         return new HasMany(Post::class, 'category_id');
+    }
+
+    public static function authors()
+    {
+        return new BelongsToMany(User::class, 'category_id', 'posts', 'author_id');
     }
 }

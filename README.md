@@ -12,16 +12,14 @@ Wired is an ORM for PHP.
 
 Key features:
 
-* Light itself, uses light dependencies.
+* Simple configuration and usage. Only a database connection data (host, login, etc.) and models classes are required.
+* Light itself, uses light dependencies that can be used separately (e.g.
+    [query builder](https://github.com/Finesse/QueryScribe), [database connector](https://github.com/Finesse/MicroDB)).
 * Not a part of a framework.
 * Supports table prefixes.
-* No external configuration (except database connection), models are configured in the models classes.
 * No static facades, only explicit delivery using dependency injection.
-* Has a query builder.
+* Has a query builder with powerful features like nested queries.
 * Exceptions on errors.
-* Build on top of small modules which can be used separately (e.g. 
-  [query builder](https://github.com/Finesse/QueryScribe), 
-  [database connector](https://github.com/Finesse/MicroDB)).
 
 Supported DBMSs:
 

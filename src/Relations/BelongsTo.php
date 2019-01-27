@@ -4,6 +4,7 @@ namespace Finesse\Wired\Relations;
 
 use Finesse\Wired\Exceptions\IncorrectModelException;
 use Finesse\Wired\Exceptions\NotModelException;
+use Finesse\Wired\Helpers;
 use Finesse\Wired\ModelInterface;
 
 /**
@@ -14,8 +15,8 @@ use Finesse\Wired\ModelInterface;
 class BelongsTo extends EqualFields implements AssociableRelationInterface
 {
     /**
-     * @param string|ModelInterface $modelClass The child model class name
-     * @param string $foreignField The name of the parent model field which contains an identifier of an child model
+     * @param string $modelClass The child model class name
+     * @param string $foreignField The name of the parent model field which contains an identifier of a child model
      * @param string|null $identifierField The name of the child model field which contains a value which the foreign
      *  key targets. Null means that the default child model identifier field should be used.
      * @throws NotModelException
@@ -30,16 +31,16 @@ class BelongsTo extends EqualFields implements AssociableRelationInterface
      */
     public function associate(string $relationName, ModelInterface $parent, ModelInterface $child = null)
     {
-        $parentModelField = $this->getParentModelField(get_class($parent));
+        $parentModelField = $this->getParentModelField($parent);
 
         if ($child) {
-            $this->checkChildModel($child);
+            Helpers::checkModelObjectClass($child, $this->childModelClass);
             $childModelField = $this->getChildModelField();
 
             if ($child->$childModelField === null) {
                 throw new IncorrectModelException(
                     "The associated model doesn't have a value in the identifier field `$childModelField`"
-                    . "; perhaps it is not saved to the database"
+                        . "; perhaps it is not saved to the database"
                 );
             }
 

@@ -69,7 +69,7 @@ class ModelQuery extends QueryProxy
      *
      * @param int|string|int[]|string[] $id Identifier or an array of identifiers
      * @return ModelInterface|null|ModelInterface[] If an identifier is given, a model object or null is returned. If an
-     *     array of identifiers is given, an array of models is returned (order is not defined).
+     *  array of identifiers is given, an array of models is returned (order is not defined).
      * @throws InvalidArgumentException
      * @throws IncorrectQueryException
      * @throws DatabaseException
@@ -97,11 +97,11 @@ class ModelQuery extends QueryProxy
      * Adds a model relation criterion.
      *
      * @param string $relationName Current model relation name. You can specify chained relation by passing multiple
-     *     relations names joined with a dot.
+     *  relations names joined with a dot.
      * @param ModelInterface|ModelInterface[]|\Closure|null $target Relation constraint. ModelInterface means "must
-     *     be related to the specified model". Models array means "must be related to one of the specified models".
-     *     Closure means "must be related to a model that fit the clause in the closure". Null means "must be related to
-     *     at least one model".
+     *  be related to the specified model". Models array means "must be related to one of the specified models".
+     *  Closure means "must be related to a model that fit the clause in the closure". Null means "must be related to
+     *  at least one model".
      * @param bool $not Whether the rule should be "not related"
      * @param string $appendRule How the criterion should be appended to the others (SQL boolean operator name)
      * @return $this
@@ -200,11 +200,54 @@ class ModelQuery extends QueryProxy
     }
 
     /**
+     * Makes an alias for a subquery table if the table name matches this query table or alias name.
+     *
+     * @param string $subQueryTable The table name
+     * @return string|null
+     */
+    public function makeSubQueryAliasIfRequired(string $subQueryTable)
+    {
+        try {
+            $queryTable = $this->baseQuery->getTableIdentifier();
+            if ($queryTable !== $subQueryTable) {
+                return null;
+            }
+
+            $counter = 0;
+            do {
+                $subQueryTableAlias = '__wired_reserved_alias_' . $counter++;
+            } while ($subQueryTableAlias === $queryTable);
+
+            return $subQueryTableAlias;
+        } catch (\Throwable $exception) {
+            return $this->handleException($exception);
+        }
+    }
+
+    /**
+     * Makes an empty query object which can be used as a subquery for this query. If this query table and the target
+     * table names are the same, the subquery receives an alias for the table.
+     *
+     * @param string $subQueryTable The table name
+     * @return static
+     */
+    public function makeSubQuery(string $table): self
+    {
+        try {
+            return (new static($this->baseQuery->makeCopyForSubQuery()))
+                ->table($table, $this->makeSubQueryAliasIfRequired($table));
+
+        } catch (\Throwable $exception) {
+            return $this->handleException($exception);
+        }
+    }
+
+    /**
      * Makes an empty model query object which can be used as a subquery for this query. If this query model class and
      * the target model class are the same, the subquery receives an alias for the table.
      *
      * @param string|ModelInterface $modelClass The model class name
-     * @return ModelQuery
+     * @return static
      * @throws NotModelException
      */
     public function makeModelSubQuery(string $modelClass): self
@@ -212,19 +255,10 @@ class ModelQuery extends QueryProxy
         try {
             Helpers::checkModelClass('The given model class', $modelClass);
 
-            $queryTableName = $this->baseQuery->getTableIdentifier();
-            $subQueryTable = $modelClass::getTable();
-            $subQueryTableAlias = null;
+            $subQuery = $this->makeSubQuery($modelClass::getTable());
+            $subQuery->modelClass = $modelClass;
 
-            if ($subQueryTable === $queryTableName) {
-                $counter = 0;
-                do {
-                    $subQueryTableAlias = '__wired_reserved_alias_'.$counter++;
-                } while ($subQueryTableAlias === $queryTableName);
-            }
-
-            return (new static($this->baseQuery->makeCopyForSubQuery(), $modelClass))
-                ->table($subQueryTable, $subQueryTableAlias);
+            return $subQuery;
         } catch (\Throwable $exception) {
             return $this->handleException($exception);
         }

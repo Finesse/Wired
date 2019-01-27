@@ -21,6 +21,7 @@ interface AssociableRelationInterface extends RelationInterface
      * @param string $relationName This relation name
      * @param ModelInterface $parent
      * @param ModelInterface|null $child (this argument is required, it will have no default value in a future release)
+     * @return void
      * @throws RelationException
      * @throws IncorrectModelException
      */
@@ -32,6 +33,7 @@ interface AssociableRelationInterface extends RelationInterface
      *
      * @param string $relationName This relation name
      * @param ModelInterface $parent
+     * @return void
      * @throws RelationException
      * @throws IncorrectModelException
      */
