@@ -194,6 +194,22 @@ Save many models at once:
 $orm->save([$user1, $user2, $user3]);
 ```
 
+The `save` model decides what to do (create a new row or update an existing row) automatically.
+You can tell what to do explicitly:
+
+```php
+$orm->save($user, Mapper::ADD); // Or $orm::ADD or 'add'
+```
+
+The possible values are:
+
+- `Mapper::ADD` - save the model as a new row with the identifier given by the database (auto increment);
+- `Mapper::ADD_AND_KEEP_ID` - save the model as a new row with the identifier stored in the model object.
+    Warning, an error may occur if the given identifier exists in the database;
+- `Mapper::UPDATE` - update the existing row, never create a new row;
+- `Mapper::AUTO` - update the existing row if the model object has identifier and create a new row if doesn't have.
+    It is the default value.
+
 ### Deleting models
 
 Delete a model object from the database:

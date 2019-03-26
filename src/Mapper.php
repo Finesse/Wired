@@ -6,6 +6,7 @@ use Finesse\MiniDB\Database;
 use Finesse\MiniDB\Exceptions\InvalidArgumentException as DBInvalidArgumentException;
 use Finesse\Wired\Exceptions\DatabaseException;
 use Finesse\Wired\Exceptions\IncorrectModelException;
+use Finesse\Wired\Exceptions\InvalidArgumentException;
 use Finesse\Wired\Exceptions\NotModelException;
 use Finesse\Wired\MapperFeatures\AttachTrait;
 use Finesse\Wired\MapperFeatures\LoadTrait;
@@ -22,6 +23,9 @@ class Mapper
     const UPDATE = 'update';
     const REPLACE = 'replace';
     const DUPLICATE = 'duplicate';
+    const AUTO = 'auto';
+    const ADD = 'add';
+    const ADD_AND_KEEP_ID = 'addAndKeepIdentifier';
 
     /**
      * @var Database Database on top of which the mapper runs
@@ -73,17 +77,25 @@ class Mapper
      * Saves the given models to the database.
      *
      * @param ModelInterface|ModelInterface[] A model or an array of models
+     * @param string $mode How to treat existing and not existing models in the database:
+     *  - 'add' or Mapper::ADD - save the model as a new row with the identifier given by the database (auto increment);
+     *  - 'addAndKeepIdentifiers' or Mapper::ADD_AND_KEEP_ID - save the model as a new row with the identifier stored
+     *      in the model object. Warning, an error may occur if the given identifier exists in the database;
+     *  - 'update' or Mapper::UPDATE - update the existing row, never create a new row;
+     *  - 'auto' or Mapper::AUTO - update the existing row if the model object has identifier and create a new row if
+     *      doesn't have;
      * @throws DatabaseException
      * @throws IncorrectModelException
+     * @throws InvalidArgumentException
      */
-    public function save($models)
+    public function save($models, string $mode = self::AUTO)
     {
         if (!is_array($models)) {
             $models = [$models];
         }
 
         foreach ($models as $index => $model) {
-            $this->saveModel($model);
+            $this->saveModel($model, $mode);
         }
     }
 
@@ -118,17 +130,42 @@ class Mapper
      * Saves a single model to the database.
      *
      * @param ModelInterface $model
+     * @param string $mode See the `save` method for details
      * @throws DatabaseException
      * @throws IncorrectModelException
+     * @throws InvalidArgumentException
      */
-    protected function saveModel(ModelInterface $model)
+    protected function saveModel(ModelInterface $model, string $mode)
     {
         $identifierField = $model::getIdentifierField();
         $row = $model->convertToRow();
-        unset($row[$identifierField]);
+        $doUpdate = false;
+
+        switch ($mode) {
+            case static::ADD:
+                unset($row[$identifierField]);
+                break;
+            case static::ADD_AND_KEEP_ID:
+                break;
+            case static::UPDATE:
+                unset($row[$identifierField]);
+                $doUpdate = true;
+                break;
+            case static::AUTO:
+                unset($row[$identifierField]);
+                $doUpdate = $model->doesExistInDatabase();
+                break;
+            default:
+                throw new InvalidArgumentException(sprintf(
+                    'An unexpected $mode value given (%s)',
+                    is_string($mode)
+                        ? sprintf('"%s"', $mode)
+                        : (is_object($mode) ? get_class($mode) : gettype($mode))
+                ));
+        }
 
         try {
-            if ($model->doesExistInDatabase()) {
+            if ($doUpdate) {
                 $this->database
                     ->table($model::getTable())
                     ->where($identifierField, $model->$identifierField)
