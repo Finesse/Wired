@@ -162,33 +162,39 @@ class Helpers
      *
      * @param ModelInterface[] $models The models
      * @param string $relation Relation name from which the relative models should be taken. If you need to collect
-     *     relatives from a subrelation, add it's name separated by a dot.
+     *  relatives from a subrelation, add it's name separated by a dot.
      * @return ModelInterface[]
      */
     public static function collectModelsRelatives(array $models, string $relation): array
     {
+        $modelsSet = new \SplObjectStorage;
+        foreach ($models as $model) {
+            $modelsSet->attach($model);
+        }
+
         foreach (explode('.', $relation) as $relation) {
-            $nextModels = [];
+            $nextModelsSet = new \SplObjectStorage;
 
             foreach ($models as $model) {
                 $relatives = $model->getLoadedRelatives($relation);
 
                 if (is_array($relatives)) {
                     foreach ($relatives as $relative) {
+                        // The goal is to get the list of unique objects
                         // We can't index the relatives list by models identifiers because a model can have no identifier
                         // We can't use array_unique because it uses not strict comparison
-                        // Using spl_object_hash is the faster than using in_array: https://3v4l.org/9B7nD
-                        $nextModels[spl_object_hash($relative)] = $relative;
+                        // Using SplObjectStorage is the faster than using in_array or spl_object_hash: https://3v4l.org/h6YA6
+                        $nextModelsSet->attach($relative);
                     }
                 } elseif ($relatives instanceof ModelInterface) {
-                    $nextModels[spl_object_hash($relatives)] = $relatives;
+                    $nextModelsSet->attach($relatives);
                 }
             }
 
-            $models = $nextModels;
+            $models = $nextModelsSet;
         }
 
-        return array_values($models);
+        return iterator_to_array($models);
     }
 
     /**
@@ -196,34 +202,33 @@ class Helpers
      *
      * @param ModelInterface[] $models The models
      * @param string $relation Relation name from which the relative models should be taken. If you need to collect
-     *     relatives from a subrelation, add it's name separated by a dot.
+     *  relatives from a subrelation, add it's name separated by a dot.
      * @return ModelInterface[]
      */
     public static function collectModelsCyclicRelatives(array $models, string $relation): array
     {
-        $relatives = [];
+        // The goal is to track the list of unique models
+        // We can't index the relatives list by models identifiers because a model can have no identifier
+        // Using SplObjectStorage is the faster than using in_array or spl_object_hash: https://3v4l.org/h6YA6
+        $relatives = new \SplObjectStorage;
 
         while ($models) {
             $nextLevelModels = static::collectModelsRelatives($models, $relation);
 
             foreach ($nextLevelModels as $index => $model) {
-                // We can't index the relatives list by models identifiers because a model can have no identifier
-                // Using spl_object_hash is the faster than using in_array: https://3v4l.org/9B7nD
-                $modelHash = spl_object_hash($model);
-
-                if (isset($relatives[$modelHash])) {
+                if (isset($relatives[$model])) {
                     // If a related model is already in the relatives list, it's relatives are not collected the
                     // second time. It prevents an infinite loop.
                     unset($nextLevelModels[$index]);
                 } else {
-                    $relatives[$modelHash] = $model;
+                    $relatives->attach($model);
                 }
             }
 
             $models = $nextLevelModels;
         }
 
-        return array_values($relatives);
+        return iterator_to_array($relatives);
     }
 
     /**
@@ -232,9 +237,9 @@ class Helpers
      * @param ModelInterface[] $models The models list
      * @param string $relation Name of relation which relatives should be filtered
      * @param callable $filter Filter function. Called on each relative model. Takes a relative model as the first
-     *     argument and a corresponding model from the list as the second argument. Return values: true — leave the
-     *     model, false — remove the model from the relatives list, ModelInterface — replace the relative model with the
-     *     given model.
+     *  argument and a corresponding model from the list as the second argument. Return values: true — leave the model,
+     *  false — remove the model from the relatives list, ModelInterface — replace the relative model with the given
+     *  model.
      */
     public static function filterModelsRelatives(array $models, string $relation, callable $filter)
     {
@@ -251,8 +256,8 @@ class Helpers
      * @param ModelInterface $model The model
      * @param string $relation Name of relation which relatives should be filtered
      * @param callable $filter Filter function. Called on each relative model. Takes a relative model as the first
-     *     argument. Return values: true — leave the model, false — remove the model from the relatives list,
-     *     ModelInterface — replace the relative model with the given model.
+     *  argument. Return values: true — leave the model, false — remove the model from the relatives list,
+     *  ModelInterface — replace the relative model with the given model.
      */
     public static function filterModelRelatives(ModelInterface $model, string $relation, callable $filter)
     {
