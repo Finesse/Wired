@@ -178,7 +178,7 @@ trait AttachTrait
     /**
      * Creates attachments between the given models when models have same classes
      *
-     * @param string $relationName The relation name which should attache the models
+     * @param string $relationName The relation name which should attach the models
      * @param bool $detachingSemantic True, if the method is actually called for detaching (used for error messages)
      * @see AttachableRelationInterface::attach for the other arguments
      * @throws DatabaseException
