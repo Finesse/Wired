@@ -3,10 +3,9 @@
 [![Latest Stable Version](https://poser.pugx.org/finesse/wired/v/stable)](https://packagist.org/packages/finesse/wired)
 [![Total Downloads](https://poser.pugx.org/finesse/wired/downloads)](https://packagist.org/packages/finesse/wired)
 ![PHP from Packagist](https://img.shields.io/packagist/php-v/finesse/wired.svg)
-[![Build Status](https://travis-ci.org/Finesse/Wired.svg?branch=master)](https://travis-ci.org/Finesse/Wired)
-[![Coverage Status](https://coveralls.io/repos/github/Finesse/Wired/badge.svg?branch=master)](https://coveralls.io/github/Finesse/Wired?branch=master)
-[![Dependency Status](https://www.versioneye.com/php/finesse:wired/badge)](https://www.versioneye.com/php/finesse:wired)
-[![SensioLabsInsight](https://insight.sensiolabs.com/projects/57f28947-02f4-4623-9992-e403222a1b9d/mini.png)](https://insight.sensiolabs.com/projects/57f28947-02f4-4623-9992-e403222a1b9d)
+[![Test Status](https://github.com/finesse/Wired/workflows/Test/badge.svg)](https://github.com/Finesse/Wired/actions?workflow=Test)
+[![Maintainability](https://api.codeclimate.com/v1/badges/d3f2ac1293709f054302/maintainability)](https://codeclimate.com/github/Finesse/Wired/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/d3f2ac1293709f054302/test_coverage)](https://codeclimate.com/github/Finesse/Wired/test_coverage)
 
 Wired is an ORM for PHP.
 
